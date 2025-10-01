@@ -46,3 +46,33 @@ CREATE TABLE LOS_SELECTOS.sede (
     FOREIGN KEY (institucion_id) REFERENCES LOS_SELECTOS.institucion(id)
 );
 
+--Crear tabla alumno
+CREATE TABLE LOS_SELECTOS.alumno (
+    alumno_id BIGINT PRIMARY KEY IDENTITY(1,1),
+    nombre VARCHAR(60) NOT NULL,
+    apellido VARCHAR(60) NOT NULL,
+    dni BIGINT NOT NULL UNIQUE,
+    direccion VARCHAR(255),
+    localidad_id BIGINT NOT NULL,
+    email VARCHAR(255),
+    legajo BIGINT NOT NULL UNIQUE,
+    telefono VARCHAR(60),
+    fecha_nacimiento DATETIME NOT NULL,
+	
+	FOREIGN KEY (localidad_id) REFERENCES LOS_SELECTOS.localidad(localidad_id)
+);
+
+--Crear tabla profesor
+CREATE TABLE LOS_SELECTOS.profesor (
+    profesor_id BIGINT PRIMARY KEY IDENTITY(1,1),
+    nombre VARCHAR(255) NOT NULL,
+    apellido VARCHAR(255) NOT NULL,
+    dni VARCHAR(255) NOT NULL UNIQUE,
+    direccion VARCHAR(255),
+    localidad_id BIGINT NOT NULL,
+    email VARCHAR(255),
+    telefono VARCHAR(255),
+    fecha_nacimiento DATETIME NOT NULL,
+	
+	FOREIGN KEY (localidad_id) REFERENCES LOS_SELECTOS.localidad(localidad_id)
+);
