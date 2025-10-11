@@ -100,7 +100,7 @@ CREATE TABLE LOS_SELECTOS.turno (
 
 --Crear tabla CURSO
 CREATE TABLE LOS_SELECTOS.curso (
-    codigo BIGINT PRIMARY KEY IDENTITY(1,1),
+    codigo BIGINT PRIMARY KEY,
     sede_id BIGINT NOT NULL,
     profesor_id BIGINT NOT NULL,
     nombre VARCHAR(255),
@@ -208,7 +208,7 @@ CREATE TABLE LOS_SELECTOS.trabajoPractico (
 CREATE TABLE LOS_SELECTOS.examenFinal (
 	final_id  BIGINT PRIMARY KEY IDENTITY(1,1),
 	curso_id BIGINT NOT NULL,
-	fecha_hora DATETIME NOT NULL,
+	fecha_hora DATETIME2 NOT NULL,
     descripcion VARCHAR(255)
 
 	FOREIGN KEY (curso_id) REFERENCES LOS_SELECTOS.curso(codigo)
@@ -606,7 +606,7 @@ BEGIN
 
 	--INSCRIPCION X ALUMNO
 	INSERT INTO LOS_SELECTOS.estadoXinscripcion(estado_id, inscripcion_id)
-		SELECT DISTINCT
+	SELECT DISTINCT
 		m.Inscripcion_Numero, --PK,FK
 		e.estado_id --PK,FK
 	FROM gd_esquema.Maestra m
@@ -616,7 +616,7 @@ BEGIN
 
 	--EVALUACION_CURSO
 	INSERT INTO LOS_SELECTOS.evaluacion(modulo_id, fecha)
-		SELECT DISTINCT
+	SELECT DISTINCT
 		mo.modulo_id,
 		ma.Evaluacion_Curso_fechaEvaluacion
 	FROM gd_esquema.Maestra ma
@@ -625,7 +625,7 @@ BEGIN
 	
 	--ALUMNO X EVALUACION_CURSO
 	INSERT INTO LOS_SELECTOS.alumnoXevaluacion(alumno_id, evaluacion_id, instancia, nota, presente)
-		SELECT DISTINCT
+	SELECT DISTINCT
 		a.alumno_id, --FK
 		e.evaluacion_id,
 		m.Evaluacion_Curso_Instancia,
@@ -643,7 +643,7 @@ BEGIN
 
 	--TRABAJO PRACTICO
 	INSERT INTO LOS_SELECTOS.trabajoPractico(alumno_id, curso_id, fechaEvaluacion, nota)
-		SELECT DISTINCT
+	SELECT DISTINCT
 		a.alumno_id, --PK,FK
 		m.Curso_Codigo, --PK,FK
 		m.Trabajo_Practico_FechaEvaluacion,
@@ -652,14 +652,67 @@ BEGIN
 	JOIN LOS_SELECTOS.alumno a
 		ON (a.legajo = m.Alumno_Legajo)
 	WHERE m.Trabajo_Practico_FechaEvaluacion IS NOT NULL 
-		AND m.Trabajo_Practico_Nota IS NOT NULL
+		AND m.Trabajo_Practico_Nota IS NOT NULL;
 
 	--FINAL
+	INSERT INTO LOS_SELECTOS.examenFinal (curso_id, fecha_hora, descripcion)
+	SELECT DISTINCT
+		m.Curso_Codigo,  --FK
+		DATEADD(SECOND, DATEDIFF(SECOND, 0, CAST(m.Examen_Final_Hora AS TIME)),		-- convierte '14:00' a segundos
+			CAST(m.Examen_Final_Fecha AS DATETIME2)) AS fecha_hora,					-- suma esos segundos a la fecha base
+		m.Examen_Final_Descripcion
+	FROM gd_esquema.Maestra m
+	WHERE m.Examen_Final_Descripcion IS NOT NULL
+	AND m.Examen_Final_Fecha IS NOT NULL;
 
+	--INSCRIPCION A FINAL
+	INSERT INTO LOS_SELECTOS.inscripcionFinal(inscripcionFinal_id, fecha_inscripto, alumno_id, examenFinal_id)
+	SELECT DISTINCT
+		m.Inscripcion_Final_Nro, --PK
+		m.Inscripcion_Final_Fecha,
+		a.alumno_id, --FK
+		e.final_id --FK
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.examenFinal e
+		ON (e.descripcion = m.Examen_Final_Descripcion)
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	WHERE m.Inscripcion_Final_Nro IS NOT NULL
+	AND m.Inscripcion_Final_Fecha IS NOT NULL;
+
+	INSERT INTO LOS_SELECTOS.evaluacionFinal(inscripcionFinal_id, nota, presente, profesor_id)
+	SELECT DISTINCT
+		m.Inscripcion_Final_Nro, --PK, FK
+		m.Evaluacion_Final_Nota,
+		m.Evaluacion_Final_Presente,
+		p.profesor_id --FK
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.profesor p
+		ON (p.dni = m.Profesor_Dni)
+	WHERE m.Evaluacion_Final_Nota IS NOT NULL
+	AND m.Evaluacion_Final_Presente IS NOT NULL;
 
 	--ENCUESTAS
+	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
+	--SELECT
+	--	m.Encuesta_Pregunta1,
+	--	m.Encuesta_Nota1
+	--FROM gd_esquema.Maestra m
+	--WHERE m.Encuesta_Pregunta1 IS NOT NULL;
 
+	INSERT INTO LOS_SELECTOS.encuesta(curso_id, alumno_id, fechaRegistro, observaciones)
+	SELECT DISTINCT
+		m.Curso_Codigo,
+		a.alumno_id,
+		m.Encuesta_FechaRegistro,
+		m.Encuesta_Observacion
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	WHERE m.Encuesta_FechaRegistro IS NOT NULL;
 
 	--PAGOS
 END
+
+exec LOS_SELECTOS.migracion_datos_procedure
 
