@@ -141,7 +141,7 @@ CREATE TABLE LOS_SELECTOS.modulo (
 CREATE TABLE LOS_SELECTOS.evaluacion (
     evaluacion_id   BIGINT PRIMARY KEY IDENTITY(1,1),
 	fecha DATETIME NOT NULL,
-	descripcion VARCHAR(255),
+	descripcion VARCHAR(255) NULL,
     modulo_id BIGINT NOT NULL
 
 	FOREIGN KEY (modulo_id) REFERENCES LOS_SELECTOS.modulo(modulo_id),
@@ -179,7 +179,7 @@ ADD CONSTRAINT uq_alumno_curso UNIQUE(alumno_id, curso_id);
 CREATE TABLE LOS_SELECTOS.estado (
     estado_id  BIGINT PRIMARY KEY IDENTITY(1,1),
 	descripcion VARCHAR(20) NOT NULL
-		CHECK (descripcion IN ('PENDIENTE', 'ACEPTADA', 'RECHAZADA'))
+		CHECK (descripcion IN ('Pendiente', 'Confirmada', 'Rechazada'))
 );
 
 --Tabla intermedia estadoXinscripcion (muchos a muchos)
@@ -195,8 +195,8 @@ CREATE TABLE LOS_SELECTOS.estadoXinscripcion (
 CREATE TABLE LOS_SELECTOS.trabajoPractico (
 	alumno_id BIGINT NOT NULL,
 	curso_id BIGINT NOT NULL,
-    titulo VARCHAR(255) NOT NULL,
-	fechaEvaluacion DATETIME NOT NULL,
+    titulo VARCHAR(255) NULL,
+	fechaEvaluacion DATETIME NULL,
 	nota TINYINT
 
 	PRIMARY KEY (alumno_id, curso_id),
@@ -355,7 +355,7 @@ BEGIN
 		WHERE i.importe = f.importeTotal
 	)
 	BEGIN
-		RAISERROR('El importe de los pagos difiere del total de la factura.', 16, 1);
+		RAISERROR('El importe del pago difiere del total de la factura.', 16, 1);
 	END
 END
 
@@ -576,5 +576,90 @@ BEGIN
 	WHERE Curso_Dia IS NOT NULL
 	AND Curso_Codigo IS NOT NULL
 
+	--MODULOS
+	INSERT INTO LOS_SELECTOS.modulo(nombre, descripcion, curso_id)
+	SELECT DISTINCT
+		m.Modulo_Nombre,
+		m.Modulo_Descripcion,
+		m.Curso_Codigo -- FK
+	FROM gd_esquema.Maestra m
+	WHERE m.Modulo_Nombre IS NOT NULL
+
+	--INSCRIPCION
+	INSERT INTO LOS_SELECTOS.inscripcion(nro_inscripcion, fecha, alumno_id, curso_id)
+	SELECT DISTINCT
+		m.Inscripcion_Numero,
+		m.Inscripcion_Fecha,
+		a.alumno_id, -- FK
+		m.Curso_Codigo --FK
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	WHERE m.Alumno_Legajo IS NOT NULL
+
+	--ESTADO
+	INSERT INTO LOS_SELECTOS.estado(descripcion)
+	SELECT DISTINCT
+		m.Inscripcion_Estado
+	FROM gd_esquema.Maestra m
+	WHERE m.Inscripcion_Estado IS NOT NULL	
+
+	--INSCRIPCION X ALUMNO
+	INSERT INTO LOS_SELECTOS.estadoXinscripcion(estado_id, inscripcion_id)
+		SELECT DISTINCT
+		m.Inscripcion_Numero, --PK,FK
+		e.estado_id --PK,FK
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.estado e
+		ON (e.descripcion = m.Inscripcion_Estado)
+	--WHERE m.Alumno_Legajo IS NOT NULL	 --TODO
+
+	--EVALUACION_CURSO
+	INSERT INTO LOS_SELECTOS.evaluacion(modulo_id, fecha)
+		SELECT DISTINCT
+		mo.modulo_id,
+		ma.Evaluacion_Curso_fechaEvaluacion
+	FROM gd_esquema.Maestra ma
+	JOIN LOS_SELECTOS.modulo mo
+		ON (mo.descripcion = ma.Modulo_Descripcion AND mo.nombre = ma.Modulo_Descripcion)
+	
+	--ALUMNO X EVALUACION_CURSO
+	INSERT INTO LOS_SELECTOS.alumnoXevaluacion(alumno_id, evaluacion_id, instancia, nota, presente)
+		SELECT DISTINCT
+		a.alumno_id, --FK
+		e.evaluacion_id,
+		m.Evaluacion_Curso_Instancia,
+		m.Evaluacion_Curso_Nota,
+		m.Evaluacion_Curso_Presente
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	JOIN LOS_SELECTOS.modulo mo
+		ON (mo.nombre = m.Modulo_Nombre AND mo.descripcion = m.Modulo_Descripcion AND mo.curso_id = m.Curso_Codigo)
+	JOIN LOS_SELECTOS.evaluacion e
+		ON (e.fecha = m.Evaluacion_Curso_fechaEvaluacion AND e.modulo_id = mo.modulo_id)
+	WHERE m.Evaluacion_Curso_fechaEvaluacion IS NOT NULL 
+		AND m.Alumno_Legajo IS NOT NULL
+
+	--TRABAJO PRACTICO
+	INSERT INTO LOS_SELECTOS.trabajoPractico(alumno_id, curso_id, fechaEvaluacion, nota)
+		SELECT DISTINCT
+		a.alumno_id, --PK,FK
+		m.Curso_Codigo, --PK,FK
+		m.Trabajo_Practico_FechaEvaluacion,
+		m.Trabajo_Practico_Nota
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	WHERE m.Trabajo_Practico_FechaEvaluacion IS NOT NULL 
+		AND m.Trabajo_Practico_Nota IS NOT NULL
+
+	--FINAL
+
+
+	--ENCUESTAS
+
+
+	--PAGOS
 END
 
