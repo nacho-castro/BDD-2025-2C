@@ -51,11 +51,11 @@ CREATE TABLE LOS_SELECTOS.alumno (
     alumno_id BIGINT PRIMARY KEY IDENTITY(1,1),
     nombre VARCHAR(60) NOT NULL,
     apellido VARCHAR(60) NOT NULL,
-    dni BIGINT NOT NULL UNIQUE,
+    dni BIGINT NOT NULL, --UNIQUE
     direccion VARCHAR(255),
     localidad_id BIGINT NOT NULL,
     email VARCHAR(255),
-    legajo BIGINT NOT NULL UNIQUE,
+    legajo BIGINT NOT NULL, --UNIQUE
     telefono VARCHAR(60),
     fecha_nacimiento DATETIME,
 	
@@ -67,7 +67,7 @@ CREATE TABLE LOS_SELECTOS.profesor (
     profesor_id BIGINT PRIMARY KEY IDENTITY(1,1),
     nombre VARCHAR(255) NOT NULL,
     apellido VARCHAR(255) NOT NULL,
-    dni VARCHAR(255) NOT NULL UNIQUE,
+    dni VARCHAR(255) NOT NULL , --UNIQUE
     direccion VARCHAR(255),
     localidad_id BIGINT NOT NULL,
     email VARCHAR(255),
@@ -414,7 +414,7 @@ GO
 CREATE PROCEDURE LOS_SELECTOS.migracion_datos_procedure
 AS
 BEGIN
-	--INSTITUCIONES
+	--INSTITUCIONES --OK
 	INSERT INTO LOS_SELECTOS.institucion (nombre, institucion_cuit, razon_social)
 	SELECT DISTINCT 
 		Institucion_Nombre, 
@@ -423,7 +423,7 @@ BEGIN
 	FROM gd_esquema.Maestra
 	WHERE Institucion_Cuit IS NOT NULL;
 
-	--PROVINCIAS
+	--PROVINCIAS --ok 
 	INSERT INTO LOS_SELECTOS.provincia(nombre)
 	SELECT DISTINCT nombre
 	FROM (
@@ -435,6 +435,7 @@ BEGIN
 		SELECT Profesor_Provincia FROM gd_esquema.Maestra WHERE Profesor_Provincia IS NOT NULL
 	) AS provincias;
 
+	--LOCALIDADES --ok 
 	INSERT INTO LOS_SELECTOS.localidad(nombre, provincia_id)
 	SELECT DISTINCT 
 		maestra.localidad, 
@@ -466,7 +467,7 @@ BEGIN
 	JOIN LOS_SELECTOS.provincia p 
 		ON (p.nombre = maestra.provincia)
 
-	--SEDES
+	--SEDES --OK
 	INSERT INTO LOS_SELECTOS.sede(nombre, direccion, localidad_id, telefono, email, institucion_id)
 	SELECT DISTINCT
 		m.Sede_Nombre,
@@ -484,7 +485,7 @@ BEGIN
 	AND m.Sede_Provincia IS NOT NULL
 	AND m.Institucion_Cuit IS NOT NULL;
 
-	--PROFESORES
+	--PROFESORES --OK
 	INSERT INTO LOS_SELECTOS.profesor(nombre, apellido, dni, direccion, localidad_id, fecha_nacimiento, email, telefono)
 	SELECT DISTINCT
 		m.Profesor_nombre,
@@ -499,7 +500,7 @@ BEGIN
 	JOIN LOS_SELECTOS.localidad l 
 		ON (l.nombre = m.Profesor_Localidad);
 
-	--ALUMNOS
+	--ALUMNOS --OK
 	INSERT INTO LOS_SELECTOS.alumno(nombre, apellido, dni, direccion, localidad_id, email, legajo, telefono, fecha_nacimiento)
 	SELECT DISTINCT
 		m.Alumno_Nombre,
@@ -515,22 +516,22 @@ BEGIN
 	JOIN LOS_SELECTOS.localidad l 
 		ON (l.nombre = m.Alumno_Localidad);
 
-	--CATEGORIAS
+	--CATEGORIAS --ok
 	INSERT INTO LOS_SELECTOS.categoria(nombre)
 	SELECT DISTINCT
 		Curso_Categoria
 	FROM gd_esquema.Maestra
 	WHERE Curso_Categoria IS NOT NULL;
 
-	--TURNOS
+	--TURNOS --OK
 	INSERT INTO LOS_SELECTOS.turno(nombre)
 	SELECT DISTINCT
 		Curso_Turno
 	FROM gd_esquema.Maestra
 	WHERE Curso_Turno IS NOT NULL;
 		
-	--CURSOS
-	INSERT INTO LOS_SELECTOS.curso(codigo, sede_id, profesor_id, categoria_id, turno_id, nombre, descripcion, fecha_inicio, fecha_fin, duracion_meses, precio_mensual)
+	--CURSOS --falla (duplicado PK)
+	INSERT INTO LOS_SELECTOS.curso (codigo, sede_id, profesor_id, categoria_id, turno_id, nombre, descripcion, fecha_inicio, fecha_fin, duracion_meses, precio_mensual)
 	SELECT DISTINCT
 		m.Curso_Codigo,
 		s.sede_id, --FK
@@ -544,19 +545,19 @@ BEGIN
 		m.Curso_DuracionMeses,
 		m.Curso_PrecioMensual
 	FROM gd_esquema.Maestra m
-	JOIN LOS_SELECTOS.sede s
-		ON (s.nombre = m.Sede_Nombre)
-	JOIN LOS_SELECTOS.profesor p
-		ON (p.dni = m.Profesor_Dni)
-	JOIN LOS_SELECTOS.categoria c
-		ON (c.nombre = m.Curso_Categoria)
-	JOIN LOS_SELECTOS.turno t
-		ON (t.nombre = m.Curso_Turno)
+	JOIN LOS_SELECTOS.sede s 
+		ON s.nombre = m.Sede_Nombre
+	JOIN LOS_SELECTOS.profesor p 
+		ON p.dni = m.Profesor_Dni
+	JOIN LOS_SELECTOS.categoria c 
+		ON c.nombre = m.Curso_Categoria
+	JOIN LOS_SELECTOS.turno t 
+		ON t.nombre = m.Curso_Turno
 	WHERE m.Curso_Codigo IS NOT NULL
-	AND m.Sede_Nombre IS NOT NULL
-	AND m.Profesor_Dni IS NOT NULL
-	AND m.Curso_Categoria IS NOT NULL
-	AND m.Curso_Turno IS NOT NULL;
+		AND m.Sede_Nombre IS NOT NULL
+		AND m.Profesor_Dni IS NOT NULL
+		AND m.Curso_Categoria IS NOT NULL
+		AND m.Curso_Turno IS NOT NULL;
 
 	--DIAS
 	INSERT INTO LOS_SELECTOS.dia(nombre)
@@ -715,4 +716,3 @@ BEGIN
 END
 
 exec LOS_SELECTOS.migracion_datos_procedure
-
