@@ -559,7 +559,7 @@ BEGIN
 		AND m.Curso_Categoria IS NOT NULL
 		AND m.Curso_Turno IS NOT NULL;
 
-	--DIAS
+	--DIAS --ok
 	INSERT INTO LOS_SELECTOS.dia(nombre)
 	SELECT DISTINCT
 		Curso_Dia
@@ -577,7 +577,7 @@ BEGIN
 	WHERE Curso_Dia IS NOT NULL
 	AND Curso_Codigo IS NOT NULL
 
-	--MODULOS
+	--MODULOS --usa cursoid --falla
 	INSERT INTO LOS_SELECTOS.modulo(nombre, descripcion, curso_id)
 	SELECT DISTINCT
 		m.Modulo_Nombre,
