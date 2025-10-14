@@ -24,6 +24,10 @@ CREATE TABLE LOS_SELECTOS.localidad (
     FOREIGN KEY (provincia_id) REFERENCES LOS_SELECTOS.provincia(provincia_id)
 );
 
+--asegurar que el par (nombre, provincia_id) sea único
+ALTER TABLE LOS_SELECTOS.localidad
+ADD CONSTRAINT uq_localidad_provincia UNIQUE (nombre, provincia_id);
+
 -- Crear tabla institucion
 CREATE TABLE LOS_SELECTOS.institucion (
     id BIGINT PRIMARY KEY IDENTITY(1,1),
@@ -137,11 +141,12 @@ CREATE TABLE LOS_SELECTOS.modulo (
 	FOREIGN KEY (curso_id) REFERENCES LOS_SELECTOS.curso(codigo),
 );
 
---evaluacion
+
+--Evaluacion
 CREATE TABLE LOS_SELECTOS.evaluacion (
     evaluacion_id   BIGINT PRIMARY KEY IDENTITY(1,1),
 	fecha DATETIME NOT NULL,
-	descripcion VARCHAR(255) NULL,
+	instancia TINYINT NOT NULL,
     modulo_id BIGINT NOT NULL
 
 	FOREIGN KEY (modulo_id) REFERENCES LOS_SELECTOS.modulo(modulo_id),
@@ -151,9 +156,8 @@ CREATE TABLE LOS_SELECTOS.evaluacion (
 CREATE TABLE LOS_SELECTOS.alumnoXevaluacion (
     alumno_id BIGINT NOT NULL,
     evaluacion_id BIGINT NOT NULL,
-	nota TINYINT NOT NULL,
-	presente BIT NOT NULL,
-	instancia TINYINT NOT NULL,
+	nota TINYINT NULL,
+	presente BIT NOT NULL
 
     PRIMARY KEY (evaluacion_id, alumno_id),
     FOREIGN KEY (alumno_id) REFERENCES LOS_SELECTOS.alumno(alumno_id),
@@ -162,7 +166,8 @@ CREATE TABLE LOS_SELECTOS.alumnoXevaluacion (
 
 --INSCRIPCION
 CREATE TABLE LOS_SELECTOS.inscripcion (
-    nro_inscripcion  BIGINT PRIMARY KEY IDENTITY(1,1),
+	inscripcion_id BIGINT PRIMARY KEY IDENTITY(1,1),
+    nro_inscripcion BIGINT,
 	fecha DATE NOT NULL,
     curso_id BIGINT NOT NULL,
 	alumno_id BIGINT NOT NULL
@@ -187,7 +192,7 @@ CREATE TABLE LOS_SELECTOS.estadoXinscripcion (
     estado_id BIGINT NOT NULL,
     inscripcion_id BIGINT NOT NULL,
     PRIMARY KEY (estado_id, inscripcion_id),
-    FOREIGN KEY (inscripcion_id) REFERENCES LOS_SELECTOS.inscripcion(nro_inscripcion),
+    FOREIGN KEY (inscripcion_id) REFERENCES LOS_SELECTOS.inscripcion(inscripcion_id),
     FOREIGN KEY (estado_id) REFERENCES LOS_SELECTOS.estado(estado_id)
 );
 
@@ -530,7 +535,7 @@ BEGIN
 	FROM gd_esquema.Maestra
 	WHERE Curso_Turno IS NOT NULL;
 		
-	--CURSOS --falla (duplicado PK)
+	--CURSOS --Ok
 	INSERT INTO LOS_SELECTOS.curso (codigo, sede_id, profesor_id, categoria_id, turno_id, nombre, descripcion, fecha_inicio, fecha_fin, duracion_meses, precio_mensual)
 	SELECT DISTINCT
 		m.Curso_Codigo,
@@ -545,8 +550,13 @@ BEGIN
 		m.Curso_DuracionMeses,
 		m.Curso_PrecioMensual
 	FROM gd_esquema.Maestra m
+	--LAS SEDES SE REPITEN POR LOCALIDAD, PERO NO POR PROVINCIA
+	JOIN LOS_SELECTOS.provincia pr
+		ON pr.nombre = m.Sede_Localidad --invertido
+	JOIN LOS_SELECTOS.localidad l 
+		ON (l.nombre = m.Sede_Provincia AND l.provincia_id = pr.provincia_id) --invertido
 	JOIN LOS_SELECTOS.sede s 
-		ON s.nombre = m.Sede_Nombre
+		ON (s.nombre = m.Sede_Nombre AND s.localidad_id = l.localidad_id)
 	JOIN LOS_SELECTOS.profesor p 
 		ON p.dni = m.Profesor_Dni
 	JOIN LOS_SELECTOS.categoria c 
@@ -554,10 +564,12 @@ BEGIN
 	JOIN LOS_SELECTOS.turno t 
 		ON t.nombre = m.Curso_Turno
 	WHERE m.Curso_Codigo IS NOT NULL
-		AND m.Sede_Nombre IS NOT NULL
-		AND m.Profesor_Dni IS NOT NULL
-		AND m.Curso_Categoria IS NOT NULL
-		AND m.Curso_Turno IS NOT NULL;
+	AND m.Sede_Nombre IS NOT NULL
+	AND m.Profesor_Dni IS NOT NULL
+	AND m.Curso_Categoria IS NOT NULL
+	AND m.Curso_Turno IS NOT NULL
+	AND m.Sede_Localidad IS NOT NULL
+	AND m.Sede_Provincia IS NOT NULL;
 
 	--DIAS --ok
 	INSERT INTO LOS_SELECTOS.dia(nombre)
@@ -566,7 +578,8 @@ BEGIN
 	FROM gd_esquema.Maestra
 	WHERE Curso_Dia IS NOT NULL;
 
-	--CURSO X DIA
+	--CURSO X DIA --OK
+	--CADA CURSO TIENE UN SOLO DIA
 	INSERT INTO LOS_SELECTOS.cursoXdia(curso_id, dia_id)
 	SELECT DISTINCT
 		m.Curso_Codigo, --PK, FK
@@ -577,7 +590,7 @@ BEGIN
 	WHERE Curso_Dia IS NOT NULL
 	AND Curso_Codigo IS NOT NULL
 
-	--MODULOS --usa cursoid --falla
+	--MODULOS --OK --(los cursos tienen mas de uno)
 	INSERT INTO LOS_SELECTOS.modulo(nombre, descripcion, curso_id)
 	SELECT DISTINCT
 		m.Modulo_Nombre,
@@ -585,8 +598,12 @@ BEGIN
 		m.Curso_Codigo -- FK
 	FROM gd_esquema.Maestra m
 	WHERE m.Modulo_Nombre IS NOT NULL
+	AND m.Curso_Codigo IS NOT NULL
+	order by Curso_Codigo
 
-	--INSCRIPCION
+	--INSCRIPCION --OK
+	--CADA ALUMNO TIENE UNA SOLA INSCRIPCION
+	--EL NRO DE INSCRIPCION NO ES UNICO
 	INSERT INTO LOS_SELECTOS.inscripcion(nro_inscripcion, fecha, alumno_id, curso_id)
 	SELECT DISTINCT
 		m.Inscripcion_Numero,
@@ -597,39 +614,50 @@ BEGIN
 	JOIN LOS_SELECTOS.alumno a
 		ON (a.legajo = m.Alumno_Legajo)
 	WHERE m.Alumno_Legajo IS NOT NULL
+	AND m.Inscripcion_Numero IS NOT NULL
+	AND m.Curso_Codigo IS NOT NULL
 
-	--ESTADO
+	--ESTADO --ok
 	INSERT INTO LOS_SELECTOS.estado(descripcion)
 	SELECT DISTINCT
 		m.Inscripcion_Estado
 	FROM gd_esquema.Maestra m
 	WHERE m.Inscripcion_Estado IS NOT NULL	
 
-	--INSCRIPCION X ALUMNO
-	INSERT INTO LOS_SELECTOS.estadoXinscripcion(estado_id, inscripcion_id)
+	--INSCRIPCION X ESTADO --ok
+	INSERT INTO LOS_SELECTOS.estadoXinscripcion(inscripcion_id, estado_id)
 	SELECT DISTINCT
-		m.Inscripcion_Numero, --PK,FK
+		i.inscripcion_id, --PK,FK
 		e.estado_id --PK,FK
 	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	JOIN LOS_SELECTOS.inscripcion i
+		ON (i.alumno_id = a.alumno_id)
 	JOIN LOS_SELECTOS.estado e
 		ON (e.descripcion = m.Inscripcion_Estado)
-	--WHERE m.Alumno_Legajo IS NOT NULL	 --TODO
+	WHERE m.Alumno_Legajo IS NOT NULL
+	AND m.Inscripcion_Numero IS NOT NULL
+	AND m.Inscripcion_Estado IS NOT NULL;
 
-	--EVALUACION_CURSO
-	INSERT INTO LOS_SELECTOS.evaluacion(modulo_id, fecha)
-	SELECT DISTINCT
-		mo.modulo_id,
-		ma.Evaluacion_Curso_fechaEvaluacion
+	--EVALUACION_CURSO --ok
+	INSERT INTO LOS_SELECTOS.evaluacion(modulo_id, fecha, instancia)
+	SELECT 
+    mo.modulo_id,
+    ma.Evaluacion_Curso_fechaEvaluacion,
+    ma.Evaluacion_Curso_Instancia
 	FROM gd_esquema.Maestra ma
 	JOIN LOS_SELECTOS.modulo mo
-		ON (mo.descripcion = ma.Modulo_Descripcion AND mo.nombre = ma.Modulo_Descripcion)
-	
-	--ALUMNO X EVALUACION_CURSO
-	INSERT INTO LOS_SELECTOS.alumnoXevaluacion(alumno_id, evaluacion_id, instancia, nota, presente)
+		ON mo.nombre = ma.Modulo_Nombre AND mo.descripcion = ma.Modulo_Descripcion AND mo.curso_id = ma.Curso_Codigo
+	WHERE ma.Evaluacion_Curso_fechaEvaluacion IS NOT NULL
+	GROUP BY mo.modulo_id, ma.Evaluacion_Curso_fechaEvaluacion, ma.Evaluacion_Curso_Instancia
+	ORDER BY Evaluacion_Curso_fechaEvaluacion;
+
+	--ALUMNO X EVALUACION_CURSO --ok
+	INSERT INTO LOS_SELECTOS.alumnoXevaluacion(alumno_id, evaluacion_id, nota, presente)
 	SELECT DISTINCT
 		a.alumno_id, --FK
 		e.evaluacion_id,
-		m.Evaluacion_Curso_Instancia,
 		m.Evaluacion_Curso_Nota,
 		m.Evaluacion_Curso_Presente
 	FROM gd_esquema.Maestra m
@@ -641,6 +669,7 @@ BEGIN
 		ON (e.fecha = m.Evaluacion_Curso_fechaEvaluacion AND e.modulo_id = mo.modulo_id)
 	WHERE m.Evaluacion_Curso_fechaEvaluacion IS NOT NULL 
 		AND m.Alumno_Legajo IS NOT NULL
+	ORDER BY alumno_id;
 
 	--TRABAJO PRACTICO
 	INSERT INTO LOS_SELECTOS.trabajoPractico(alumno_id, curso_id, fechaEvaluacion, nota)
