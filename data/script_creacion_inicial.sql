@@ -742,6 +742,30 @@ BEGIN
 	WHERE m.Encuesta_FechaRegistro IS NOT NULL;
 
 	--PAGOS
+	INSERT INTO LOS_SELECTOS.pago(nroFactura, fecha,importe, medio_id)
+	SELECT DISTINCT 
+		fact.nroFactura, -- FK
+		m.Pago_Fecha, 
+		m.Pago_Importe, 
+		medio.medio_id -- FK
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.medioDePago medio 
+		ON (medio.descripcion = m.Pago_MedioPago)
+	JOIN LOS_SELECTOS.factura fact
+		ON (fact.nroFactura = m.Factura_Numero)
+	WHERE m.Pago_Fecha IS NOT NULL;
+
+	--MEDIO DE PAGO
+	INSERT INTO LOS_SELECTOS.medioDePago (descripcion)
+	SELECT DISTINCT m.Pago_MedioPago
+	FROM gd_esquema.Maestra m
+	WHERE m.Pago_MedioPago IS NOT NULL
+	AND NOT EXISTS (
+		SELECT 1
+		FROM LOS_SELECTOS.medioDePago medio
+		WHERE medio.descripcion = m.Pago_MedioPago
+);
+
 END
 
 exec LOS_SELECTOS.migracion_datos_procedure
