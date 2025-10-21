@@ -276,12 +276,12 @@ CREATE TABLE LOS_SELECTOS.alumnoXcurso (
 CREATE TABLE LOS_SELECTOS.medioDePago (
     medio_id BIGINT PRIMARY KEY IDENTITY(1,1),
     descripcion VARCHAR(60) NOT NULL
-		CHECK (descripcion IN ('TRANSFERENCIA', 'CREDITO', 'DEBITO', 'EFECTIVO'))
+		CHECK (descripcion IN ('Transferencia', 'Tarjeta Crédito', 'Tarjeta Débito', 'Efectivo'))
 );
 
 -- Tabla factura
 CREATE TABLE LOS_SELECTOS.factura (
-    nroFactura BIGINT PRIMARY KEY IDENTITY(1,1),
+    nroFactura BIGINT PRIMARY KEY,
     fechaEmision DATETIME NOT NULL,
     fechaVencimiento DATETIME NOT NULL,
     alumno_id BIGINT NOT NULL,
@@ -295,7 +295,8 @@ CREATE TABLE LOS_SELECTOS.detalleFactura (
     id BIGINT PRIMARY KEY IDENTITY(1,1),
     nroFactura BIGINT NOT NULL,
     curso_id BIGINT NOT NULL,
-    periodo DATE NOT NULL,
+    periodo_anio INT NOT NULL,
+	periodo_mes INT NOT NULL,
     importe DECIMAL(18,2) NOT NULL
 
     FOREIGN KEY (nroFactura) REFERENCES LOS_SELECTOS.factura(nroFactura),
@@ -362,7 +363,7 @@ BEGIN
 	IF NOT EXISTS (
 		SELECT i.importe, f.importeTotal 
 		FROM inserted i 
-		JOIN factura f ON (f.nroFactura = i.nroFactura) 
+		JOIN LOS_SELECTOS.factura f ON (f.nroFactura = i.nroFactura) 
 		WHERE i.importe = f.importeTotal
 	)
 	BEGIN
@@ -718,7 +719,7 @@ BEGIN
 	JOIN LOS_SELECTOS.alumno a
 		ON (a.legajo = m.Alumno_Legajo)
 	WHERE m.Inscripcion_Final_Fecha IS NOT NULL
-	AND m.Inscripcion_Final_Nro IS NOT NULL
+	AND m.Inscripcion_Final_Nro IS NOT NULL;
 
 	--EVALUACION FINAL (es la nota)
 	INSERT INTO LOS_SELECTOS.evaluacionFinal(inscripcionFinal_id, nota, presente, profesor_id, alumno_id, examenFinal_id)
@@ -726,17 +727,16 @@ BEGIN
 		i.inscripcionFinal_id, --PK, FK OneToOne
 		m.Evaluacion_Final_Nota,
 		m.Evaluacion_Final_Presente,
-		p.profesor_id, --PK, FK OneToOne
-		a.alumno_id, --PK, FK OneToOne
-		e.final_id,
-		a.legajo
+		p.profesor_id, 
+		a.alumno_id,	--PK, FK OneToOne
+		e.final_id		--PK, FK OneToOne
 	FROM gd_esquema.Maestra m
 	JOIN LOS_SELECTOS.profesor p
 		ON p.dni = m.Profesor_Dni
 	JOIN LOS_SELECTOS.provincia pr
 		ON (pr.nombre = m.Alumno_Provincia)
 	JOIN LOS_SELECTOS.localidad l
-		ON (l.nombre = m.Alumno_Localidad AND pr.provincia_id = l.localidad_id)
+		ON (l.nombre = m.Alumno_Localidad AND pr.provincia_id = l.provincia_id)
 	JOIN LOS_SELECTOS.alumno a
 		ON (a.legajo = m.Alumno_Legajo AND a.localidad_id = l.localidad_id)
 	JOIN LOS_SELECTOS.examenFinal e
@@ -745,34 +745,89 @@ BEGIN
                               CAST(m.Examen_Final_Fecha AS DATETIME2))
 	JOIN LOS_SELECTOS.inscripcionFinal i
 		ON (i.alumno_id = a.alumno_id AND i.examenFinal_id = e.final_id)
-	WHERE m.Evaluacion_Final_Presente IS NOT NULL
-	ORDER BY a.legajo
+	WHERE m.Evaluacion_Final_Presente IS NOT NULL;
 	
-	--ENCUESTAS
+	--preguntas
 	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
 	--SELECT
 	--	m.Encuesta_Pregunta1,
 	--	m.Encuesta_Nota1
 	--FROM gd_esquema.Maestra m
+	--LEFT JOIN LOS_SELECTOS.alumno a
+	--	ON (a.legajo = m.Alumno_Legajo)
 	--WHERE m.Encuesta_Pregunta1 IS NOT NULL;
 
-	INSERT INTO LOS_SELECTOS.encuesta(curso_id, alumno_id, fechaRegistro, observaciones)
-	SELECT DISTINCT
-		m.Curso_Codigo,
-		a.alumno_id,
-		m.Encuesta_FechaRegistro,
-		m.Encuesta_Observacion
+	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
+	--SELECT
+	--	m.Encuesta_Pregunta2,
+	--	m.Encuesta_Nota2
+	--FROM gd_esquema.Maestra m
+	--WHERE m.Encuesta_Pregunta2 IS NOT NULL;
+
+	--ENCUESTA
+	--INSERT INTO LOS_SELECTOS.encuesta(curso_id, alumno_id, fechaRegistro, observaciones)
+	--SELECT DISTINCT
+	--	m.Curso_Codigo, --FK
+	--	a.alumno_id, --FK
+	--	m.Encuesta_FechaRegistro,
+	--	m.Encuesta_Observacion
+	--FROM gd_esquema.Maestra m
+	--LEFT JOIN LOS_SELECTOS.alumno a
+	--	ON (a.legajo = m.Alumno_Legajo)
+	--WHERE m.Encuesta_FechaRegistro IS NOT NULL;
+
+	--INSERT INTO LOS_SELECTOS.detalleEncuesta(encuesta_id, pregunta_id)
+	--SELECT
+	--	e.encuesta_id, --FK,PK
+	--	p.pregunta_id --FK,PK
+	--FROM gd_esquema.Maestra m
+	--JOIN LOS_SELECTOS.pregunta p
+	--	ON (p.pregunta = m.Encuesta_Pregunta1 AND p.nota = m.Encuesta_Nota1)
+	--JOIN LOS_SELECTOS.alumno a
+	--	ON (a.legajo = m.Alumno_Legajo)
+	--JOIN LOS_SELECTOS.curso c
+	--	ON (c.codigo = m.Curso_Codigo)
+	--JOIN LOS_SELECTOS.encuesta e
+	--	ON (e.alumno_id = a.alumno_id AND e.curso_id = c.codigo AND e.fechaRegistro = m.Encuesta_FechaRegistro)
+	--WHERE m.Encuesta_Pregunta1 IS NOT NULL;
+
+	--MEDIO DE PAGO
+	INSERT INTO LOS_SELECTOS.medioDePago (descripcion)
+	SELECT DISTINCT m.Pago_MedioPago
 	FROM gd_esquema.Maestra m
-	JOIN LOS_SELECTOS.provincia p
-		ON (p.nombre = m.Alumno_Provincia)
-	JOIN LOS_SELECTOS.localidad l
-		ON (l.nombre = m.Alumno_Localidad)
-	JOIN LOS_SELECTOS.alumno a
-		ON (a.legajo = m.Alumno_Legajo AND a.localidad_id = l.localidad_id)
-	WHERE m.Encuesta_FechaRegistro IS NOT NULL;
+	WHERE m.Pago_MedioPago IS NOT NULL
+	AND NOT EXISTS (
+		SELECT 1
+		FROM LOS_SELECTOS.medioDePago medio
+		WHERE medio.descripcion = m.Pago_MedioPago
+	);
+
+	--DETALLE
+	INSERT INTO LOS_SELECTOS.detalleFactura(nroFactura, curso_id, periodo_anio, periodo_mes, importe)
+	SELECT DISTINCT 
+		m.Factura_Numero,
+		m.Curso_Codigo,
+		m.Periodo_Anio,
+		m.Periodo_Mes,
+		m.Detalle_Factura_Importe
+	FROM gd_esquema.Maestra m
+	WHERE m.Factura_Numero IS NOT NULL
+
+	--FACTURA
+	INSERT INTO LOS_SELECTOS.factura(nroFactura, fechaEmision, fechaVencimiento, alumno_id, importeTotal)
+	SELECT DISTINCT 
+		m.Factura_Numero,
+		m.Factura_FechaEmision,
+		m.Factura_FechaVencimiento,
+		a.alumno_id,
+		m.Factura_Total
+	FROM gd_esquema.Maestra m
+	LEFT JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	WHERE m.Factura_Numero IS NOT NULL
 
 	--PAGOS
-	INSERT INTO LOS_SELECTOS.pago(nroFactura, fecha,importe, medio_id)
+	INSERT INTO LOS_SELECTOS.pago(nroFactura, fecha, importe, medio_id)
 	SELECT DISTINCT 
 		fact.nroFactura, -- FK
 		m.Pago_Fecha, 
@@ -785,17 +840,6 @@ BEGIN
 		ON (fact.nroFactura = m.Factura_Numero)
 	WHERE m.Pago_Fecha IS NOT NULL;
 
-	--MEDIO DE PAGO
-	INSERT INTO LOS_SELECTOS.medioDePago (descripcion)
-	SELECT DISTINCT m.Pago_MedioPago
-	FROM gd_esquema.Maestra m
-	WHERE m.Pago_MedioPago IS NOT NULL
-	AND NOT EXISTS (
-		SELECT 1
-		FROM LOS_SELECTOS.medioDePago medio
-		WHERE medio.descripcion = m.Pago_MedioPago
-);
+END;
 
-END
-
-exec LOS_SELECTOS.migracion_datos_procedure
+EXECUTE LOS_SELECTOS.migracion_datos_procedure;
