@@ -221,24 +221,30 @@ CREATE TABLE LOS_SELECTOS.examenFinal (
 
 --INSCRIPCION A FINAL
 CREATE TABLE LOS_SELECTOS.inscripcionFinal (
-	inscripcionFinal_id  BIGINT PRIMARY KEY IDENTITY(1,1),
+	inscripcionFinal_id BIGINT NOT NULL,
 	examenFinal_id BIGINT NOT NULL,
 	alumno_id BIGINT NOT NULL,
 	fecha_inscripto DATETIME NOT NULL
 
+	PRIMARY KEY (inscripcionFinal_id, examenFinal_id, alumno_id),
 	FOREIGN KEY (alumno_id) REFERENCES LOS_SELECTOS.alumno(alumno_id),
 	FOREIGN KEY (examenFinal_id) REFERENCES LOS_SELECTOS.examenFinal(final_id)
 );
 
 --Evaluacion Final
 CREATE TABLE LOS_SELECTOS.evaluacionFinal (
-	inscripcionFinal_id BIGINT NOT NULL,
+	inscripcionFinal_id BIGINT NOT NULL, --FK
+	examenFinal_id BIGINT NOT NULL, --FK
+	alumno_id BIGINT NOT NULL, --FK
     profesor_id BIGINT NOT NULL,
     nota TINYINT NULL,
     presente BIT NOT NULL
 
-    PRIMARY KEY (inscripcionFinal_id),
-    FOREIGN KEY (inscripcionFinal_id) REFERENCES LOS_SELECTOS.inscripcionFinal(inscripcionFinal_id),
+    PRIMARY KEY (inscripcionFinal_id, examenFinal_id, alumno_id),
+	
+	FOREIGN KEY (inscripcionFinal_id, examenFinal_id, alumno_id)
+        REFERENCES LOS_SELECTOS.inscripcionFinal(inscripcionFinal_id, examenFinal_id, alumno_id),
+
     FOREIGN KEY (profesor_id) REFERENCES LOS_SELECTOS.profesor(profesor_id)
 );
 
@@ -290,7 +296,7 @@ CREATE TABLE LOS_SELECTOS.detalleFactura (
     nroFactura BIGINT NOT NULL,
     curso_id BIGINT NOT NULL,
     periodo DATE NOT NULL,
-    importe DECIMAL(18,2) NOT NULL,
+    importe DECIMAL(18,2) NOT NULL
 
     FOREIGN KEY (nroFactura) REFERENCES LOS_SELECTOS.factura(nroFactura),
     FOREIGN KEY (curso_id) REFERENCES LOS_SELECTOS.curso(codigo)
@@ -484,8 +490,10 @@ BEGIN
 	FROM gd_esquema.Maestra m
 	JOIN LOS_SELECTOS.institucion i
 		ON (i.institucion_cuit = m.Institucion_Cuit)
+	JOIN LOS_SELECTOS.provincia p
+		ON (p.nombre = m.Sede_Localidad) --aca esta la provincia
 	JOIN LOS_SELECTOS.localidad l
-		ON (l.nombre = m.Sede_Provincia) --aca esta la localidad
+		ON (l.nombre = m.Sede_Provincia AND l.provincia_id = p.provincia_id) --aca esta la localidad
 	WHERE m.Sede_Nombre IS NOT NULL
 	AND m.Sede_Provincia IS NOT NULL
 	AND m.Institucion_Cuit IS NOT NULL;
@@ -671,7 +679,7 @@ BEGIN
 		AND m.Alumno_Legajo IS NOT NULL
 	ORDER BY alumno_id;
 
-	--TRABAJO PRACTICO
+	--TRABAJO PRACTICO --ok
 	INSERT INTO LOS_SELECTOS.trabajoPractico(alumno_id, curso_id, fechaEvaluacion, nota)
 	SELECT DISTINCT
 		a.alumno_id, --PK,FK
@@ -684,7 +692,7 @@ BEGIN
 	WHERE m.Trabajo_Practico_FechaEvaluacion IS NOT NULL 
 		AND m.Trabajo_Practico_Nota IS NOT NULL;
 
-	--FINAL
+	--FINAL --ok
 	INSERT INTO LOS_SELECTOS.examenFinal (curso_id, fecha_hora, descripcion)
 	SELECT DISTINCT
 		m.Curso_Codigo,  --FK
@@ -695,33 +703,51 @@ BEGIN
 	WHERE m.Examen_Final_Descripcion IS NOT NULL
 	AND m.Examen_Final_Fecha IS NOT NULL;
 
-	--INSCRIPCION A FINAL
+	--INSCRIPCION A FINAL --ok
 	INSERT INTO LOS_SELECTOS.inscripcionFinal(inscripcionFinal_id, fecha_inscripto, alumno_id, examenFinal_id)
 	SELECT DISTINCT
-		m.Inscripcion_Final_Nro, --PK
+		m.Inscripcion_Final_Nro, --PK (repetido si es misma fecha)
 		m.Inscripcion_Final_Fecha,
-		a.alumno_id, --FK
-		e.final_id --FK
+		a.alumno_id, --FK, PK
+		e.final_id --FK, PK
 	FROM gd_esquema.Maestra m
 	JOIN LOS_SELECTOS.examenFinal e
-		ON (e.descripcion = m.Examen_Final_Descripcion)
+		ON (e.descripcion = m.Examen_Final_Descripcion 
+			AND e.fecha_hora = DATEADD(SECOND, DATEDIFF(SECOND, 0, CAST(m.Examen_Final_Hora AS TIME)),
+                              CAST(m.Examen_Final_Fecha AS DATETIME2)))
 	JOIN LOS_SELECTOS.alumno a
 		ON (a.legajo = m.Alumno_Legajo)
-	WHERE m.Inscripcion_Final_Nro IS NOT NULL
-	AND m.Inscripcion_Final_Fecha IS NOT NULL;
+	WHERE m.Inscripcion_Final_Fecha IS NOT NULL
+	AND m.Inscripcion_Final_Nro IS NOT NULL
 
-	INSERT INTO LOS_SELECTOS.evaluacionFinal(inscripcionFinal_id, nota, presente, profesor_id)
+	--EVALUACION FINAL (es la nota)
+	INSERT INTO LOS_SELECTOS.evaluacionFinal(inscripcionFinal_id, nota, presente, profesor_id, alumno_id, examenFinal_id)
 	SELECT DISTINCT
-		m.Inscripcion_Final_Nro, --PK, FK
+		i.inscripcionFinal_id, --PK, FK OneToOne
 		m.Evaluacion_Final_Nota,
 		m.Evaluacion_Final_Presente,
-		p.profesor_id --FK
+		p.profesor_id, --PK, FK OneToOne
+		a.alumno_id, --PK, FK OneToOne
+		e.final_id,
+		a.legajo
 	FROM gd_esquema.Maestra m
 	JOIN LOS_SELECTOS.profesor p
-		ON (p.dni = m.Profesor_Dni)
-	WHERE m.Evaluacion_Final_Nota IS NOT NULL
-	AND m.Evaluacion_Final_Presente IS NOT NULL;
-
+		ON p.dni = m.Profesor_Dni
+	JOIN LOS_SELECTOS.provincia pr
+		ON (pr.nombre = m.Alumno_Provincia)
+	JOIN LOS_SELECTOS.localidad l
+		ON (l.nombre = m.Alumno_Localidad AND pr.provincia_id = l.localidad_id)
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo AND a.localidad_id = l.localidad_id)
+	JOIN LOS_SELECTOS.examenFinal e
+		ON e.descripcion = m.Examen_Final_Descripcion 
+			AND e.fecha_hora = DATEADD(SECOND, DATEDIFF(SECOND, 0, CAST(m.Examen_Final_Hora AS TIME)),
+                              CAST(m.Examen_Final_Fecha AS DATETIME2))
+	JOIN LOS_SELECTOS.inscripcionFinal i
+		ON (i.alumno_id = a.alumno_id AND i.examenFinal_id = e.final_id)
+	WHERE m.Evaluacion_Final_Presente IS NOT NULL
+	ORDER BY a.legajo
+	
 	--ENCUESTAS
 	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
 	--SELECT
@@ -737,8 +763,12 @@ BEGIN
 		m.Encuesta_FechaRegistro,
 		m.Encuesta_Observacion
 	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.provincia p
+		ON (p.nombre = m.Alumno_Provincia)
+	JOIN LOS_SELECTOS.localidad l
+		ON (l.nombre = m.Alumno_Localidad)
 	JOIN LOS_SELECTOS.alumno a
-		ON (a.legajo = m.Alumno_Legajo)
+		ON (a.legajo = m.Alumno_Legajo AND a.localidad_id = l.localidad_id)
 	WHERE m.Encuesta_FechaRegistro IS NOT NULL;
 
 	--PAGOS
