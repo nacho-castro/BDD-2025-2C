@@ -453,7 +453,7 @@ BEGIN
 		maestra.localidad, 
 		p.provincia_id --FK
 	FROM (
-		SELECT 
+		SELECT DISTINCT
 			Sede_Provincia AS localidad, --localidad
 			Sede_Localidad AS provincia  --provincia
 		FROM gd_esquema.Maestra
@@ -461,7 +461,7 @@ BEGIN
 
 		UNION
 
-		SELECT 
+		SELECT DISTINCT 
 			Alumno_Localidad AS localidad,
 			Alumno_Provincia AS provincia
 		FROM gd_esquema.Maestra
@@ -469,7 +469,7 @@ BEGIN
 
 		UNION
 
-		SELECT 
+		SELECT DISTINCT
 			Profesor_Localidad AS localidad,
 			Profesor_Provincia AS provincia
 		FROM gd_esquema.Maestra
@@ -527,8 +527,10 @@ BEGIN
 		m.Alumno_Telefono,
 		m.Alumno_FechaNacimiento
 	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.provincia pr
+		ON (pr.nombre = Alumno_Provincia)
 	JOIN LOS_SELECTOS.localidad l 
-		ON (l.nombre = m.Alumno_Localidad);
+		ON (l.nombre = m.Alumno_Localidad AND pr.provincia_id = l.provincia_id);
 
 	--CATEGORIAS --ok
 	INSERT INTO LOS_SELECTOS.categoria(nombre)
@@ -631,7 +633,7 @@ BEGIN
 	SELECT DISTINCT
 		m.Inscripcion_Estado
 	FROM gd_esquema.Maestra m
-	WHERE m.Inscripcion_Estado IS NOT NULL	
+	WHERE m.Inscripcion_Estado IS NOT NULL
 
 	--INSCRIPCION X ESTADO --ok
 	INSERT INTO LOS_SELECTOS.estadoXinscripcion(inscripcion_id, estado_id)
