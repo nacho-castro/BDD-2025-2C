@@ -701,7 +701,8 @@ BEGIN
 	FROM gd_esquema.Maestra m
 	JOIN LOS_SELECTOS.examenFinal e
 		ON (e.descripcion = m.Examen_Final_Descripcion 
-			AND e.fecha_hora = DATEADD(SECOND, DATEDIFF(SECOND, 0, CAST(m.Examen_Final_Hora AS TIME)),
+				AND e.curso_id = m.Curso_Codigo
+				AND e.fecha_hora = DATEADD(SECOND, DATEDIFF(SECOND, 0, CAST(m.Examen_Final_Hora AS TIME)),
                               CAST(m.Examen_Final_Fecha AS DATETIME2)))
 	JOIN LOS_SELECTOS.alumno a
 		ON (a.legajo = m.Alumno_Legajo)
@@ -711,14 +712,22 @@ BEGIN
 	--EVALUACION FINAL (es la nota)
 	INSERT INTO LOS_SELECTOS.evaluacionFinal(nro_inscripcion, nota, presente, profesor_id)
 	SELECT DISTINCT
-		m.Inscripcion_Final_Nro, --PK,FK OneToOne
+		i.nro_inscripcion,
 		m.Evaluacion_Final_Nota,
 		m.Evaluacion_Final_Presente,
 		p.profesor_id
 	FROM gd_esquema.Maestra m
 	JOIN LOS_SELECTOS.profesor p
-		ON (p.dni = m.Profesor_Dni)
-	WHERE m.Evaluacion_Final_Presente IS NOT NULL
+		ON p.dni = m.Profesor_Dni
+	JOIN LOS_SELECTOS.alumno a
+		ON a.legajo = m.Alumno_Legajo
+	JOIN LOS_SELECTOS.examenFinal e
+		ON (e.curso_id = m.Curso_Codigo
+			AND e.fecha_hora = DATEADD(SECOND, DATEDIFF(SECOND, 0, CAST(m.Examen_Final_Hora AS TIME)),
+                              CAST(m.Examen_Final_Fecha AS DATETIME2)))
+	JOIN LOS_SELECTOS.inscripcionFinal i
+		ON (i.alumno_id = a.alumno_id AND i.examenFinal_id = e.final_id)
+	WHERE m.Evaluacion_Final_Presente IS NOT NULL;
 	
 	--preguntas
 	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
@@ -764,7 +773,32 @@ BEGIN
 	--	ON (e.alumno_id = a.alumno_id AND e.curso_id = c.codigo AND e.fechaRegistro = m.Encuesta_FechaRegistro)
 	--WHERE m.Encuesta_Pregunta1 IS NOT NULL;
 
-	--MEDIO DE PAGO
+	--FACTURA --OK
+	INSERT INTO LOS_SELECTOS.factura(nroFactura, fechaEmision, fechaVencimiento, alumno_id, importeTotal)
+	SELECT DISTINCT 
+		m.Factura_Numero, --PK
+		m.Factura_FechaEmision,
+		m.Factura_FechaVencimiento,
+		a.alumno_id, --FK
+		m.Factura_Total
+	FROM gd_esquema.Maestra m
+	JOIN LOS_SELECTOS.alumno a
+		ON (a.legajo = m.Alumno_Legajo)
+	WHERE m.Factura_Numero IS NOT NULL;
+
+	--DETALLE --OK
+	INSERT INTO LOS_SELECTOS.detalleFactura(nroFactura, curso_id, periodo_anio, periodo_mes, importe)
+	SELECT 
+		m.Factura_Numero, --FK
+		m.Curso_Codigo, --FK
+		m.Periodo_Anio,
+		m.Periodo_Mes,
+		m.Detalle_Factura_Importe
+	FROM gd_esquema.Maestra m
+	WHERE m.Factura_Numero IS NOT NULL
+	AND Detalle_Factura_Importe IS NOT NULL;
+
+	--MEDIO DE PAGO --OK
 	INSERT INTO LOS_SELECTOS.medioDePago (descripcion)
 	SELECT DISTINCT m.Pago_MedioPago
 	FROM gd_esquema.Maestra m
@@ -775,43 +809,18 @@ BEGIN
 		WHERE medio.descripcion = m.Pago_MedioPago
 	);
 
-	--DETALLE
-	INSERT INTO LOS_SELECTOS.detalleFactura(nroFactura, curso_id, periodo_anio, periodo_mes, importe)
-	SELECT DISTINCT 
-		m.Factura_Numero,
-		m.Curso_Codigo,
-		m.Periodo_Anio,
-		m.Periodo_Mes,
-		m.Detalle_Factura_Importe
-	FROM gd_esquema.Maestra m
-	WHERE m.Factura_Numero IS NOT NULL
-
-	--FACTURA
-	INSERT INTO LOS_SELECTOS.factura(nroFactura, fechaEmision, fechaVencimiento, alumno_id, importeTotal)
-	SELECT DISTINCT 
-		m.Factura_Numero,
-		m.Factura_FechaEmision,
-		m.Factura_FechaVencimiento,
-		a.alumno_id,
-		m.Factura_Total
-	FROM gd_esquema.Maestra m
-	LEFT JOIN LOS_SELECTOS.alumno a
-		ON (a.legajo = m.Alumno_Legajo)
-	WHERE m.Factura_Numero IS NOT NULL
-
-	--PAGOS
+	--PAGOS --OK
 	INSERT INTO LOS_SELECTOS.pago(nroFactura, fecha, importe, medio_id)
 	SELECT DISTINCT 
-		fact.nroFactura, -- FK
+		m.Factura_Numero, --FK
 		m.Pago_Fecha, 
-		m.Pago_Importe, 
-		medio.medio_id -- FK
+		m.Pago_Importe,
+		medio.medio_id --FK
 	FROM gd_esquema.Maestra m
-	JOIN LOS_SELECTOS.medioDePago medio 
+	JOIN LOS_SELECTOS.medioDePago medio
 		ON (medio.descripcion = m.Pago_MedioPago)
-	JOIN LOS_SELECTOS.factura fact
-		ON (fact.nroFactura = m.Factura_Numero)
-	WHERE m.Pago_Fecha IS NOT NULL;
+	WHERE m.Pago_Fecha IS NOT NULL
+		AND m.Pago_Importe IS NOT NULL;
 
 END;
 
