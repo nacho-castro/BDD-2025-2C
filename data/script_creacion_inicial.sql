@@ -360,7 +360,8 @@ BEGIN
 	BEGIN
 		RAISERROR('El importe del pago difiere del total de la factura.', 16, 1);
 	END
-END
+END;
+GO
 
 --Trigger en pregunta: que la nota esté entre 1 y 10.
 GO
@@ -377,7 +378,8 @@ BEGIN
 	BEGIN
 		RAISERROR('Debe ser una respuesta entre 1 y 10.', 16, 1);
 	END
-END
+END;
+GO
 
 -- =========================
 -- ÍNDICES
@@ -709,7 +711,7 @@ BEGIN
 	WHERE m.Inscripcion_Final_Fecha IS NOT NULL
 	AND m.Inscripcion_Final_Nro IS NOT NULL;
 
-	--EVALUACION FINAL (es la nota)
+	--EVALUACION FINAL --OK
 	INSERT INTO LOS_SELECTOS.evaluacionFinal(nro_inscripcion, nota, presente, profesor_id)
 	SELECT DISTINCT
 		i.nro_inscripcion,
@@ -823,5 +825,11 @@ BEGIN
 		AND m.Pago_Importe IS NOT NULL;
 
 END;
+GO
 
-EXECUTE LOS_SELECTOS.migracion_datos_procedure;
+BEGIN TRY
+    EXECUTE LOS_SELECTOS.migracion_datos_procedure;
+END TRY
+BEGIN CATCH
+    PRINT 'Error en la migración: ' + ERROR_MESSAGE();
+END CATCH;
