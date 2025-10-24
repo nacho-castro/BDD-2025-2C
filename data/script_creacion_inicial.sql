@@ -1,9 +1,9 @@
 ﻿-- =========================================
 -- 1. Crear esquema del grupo
 -- =========================================
-CREATE SCHEMA LOS_SELECTOS
-    AUTHORIZATION dbo;  -- dueño del schema (puede ser dbo u otro usuario)
-GO
+--CREATE SCHEMA LOS_SELECTOS
+--    AUTHORIZATION dbo;  -- dueño del schema (puede ser dbo u otro usuario)
+--GO
 
 -- =========================================
 -- 2. Creación de Tablas
@@ -312,21 +312,19 @@ CREATE TABLE LOS_SELECTOS.pago (
 
 -- Tabla pregunta
 CREATE TABLE LOS_SELECTOS.pregunta (
-    pregunta_id BIGINT PRIMARY KEY,
+    pregunta_id BIGINT IDENTITY(1,1) PRIMARY KEY,
     pregunta VARCHAR(255) NOT NULL,
     nota TINYINT NULL
 );
 
 -- Tabla encuesta
 CREATE TABLE LOS_SELECTOS.encuesta (
-    encuesta_id BIGINT PRIMARY KEY,
+	encuesta_id BIGINT IDENTITY(1,1) PRIMARY KEY,
     curso_id BIGINT NOT NULL,
-    alumno_id BIGINT NOT NULL,
     fechaRegistro DATETIME NOT NULL,
     observaciones VARCHAR(255) NULL,
 
-    FOREIGN KEY (curso_id) REFERENCES LOS_SELECTOS.curso(codigo),
-    FOREIGN KEY (alumno_id) REFERENCES LOS_SELECTOS.alumno(alumno_id)
+    FOREIGN KEY (curso_id) REFERENCES LOS_SELECTOS.curso(codigo)
 );
 
 -- Tabla detalle (relación N:N entre encuesta y pregunta)
@@ -732,48 +730,64 @@ BEGIN
 	WHERE m.Evaluacion_Final_Presente IS NOT NULL;
 	
 	--preguntas
-	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
-	--SELECT
-	--	m.Encuesta_Pregunta1,
-	--	m.Encuesta_Nota1
-	--FROM gd_esquema.Maestra m
-	--LEFT JOIN LOS_SELECTOS.alumno a
-	--	ON (a.legajo = m.Alumno_Legajo)
-	--WHERE m.Encuesta_Pregunta1 IS NOT NULL;
-
-	--INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
-	--SELECT
-	--	m.Encuesta_Pregunta2,
-	--	m.Encuesta_Nota2
-	--FROM gd_esquema.Maestra m
-	--WHERE m.Encuesta_Pregunta2 IS NOT NULL;
+	INSERT INTO LOS_SELECTOS.pregunta(pregunta, nota)
+	SELECT DISTINCT pregunta, nota
+	FROM (
+    SELECT Encuesta_Pregunta1 AS pregunta, Encuesta_Nota1 AS nota FROM gd_esquema.Maestra
+    UNION ALL
+    SELECT Encuesta_Pregunta2, Encuesta_Nota2 FROM gd_esquema.Maestra
+    UNION ALL
+    SELECT Encuesta_Pregunta3, Encuesta_Nota3 FROM gd_esquema.Maestra
+    UNION ALL
+    SELECT Encuesta_Pregunta4, Encuesta_Nota4 FROM gd_esquema.Maestra
+	) AS todas
+	WHERE pregunta IS NOT NULL;
 
 	--ENCUESTA
-	--INSERT INTO LOS_SELECTOS.encuesta(curso_id, alumno_id, fechaRegistro, observaciones)
-	--SELECT DISTINCT
-	--	m.Curso_Codigo, --FK
-	--	a.alumno_id, --FK
-	--	m.Encuesta_FechaRegistro,
-	--	m.Encuesta_Observacion
-	--FROM gd_esquema.Maestra m
-	--LEFT JOIN LOS_SELECTOS.alumno a
-	--	ON (a.legajo = m.Alumno_Legajo)
-	--WHERE m.Encuesta_FechaRegistro IS NOT NULL;
+	INSERT INTO LOS_SELECTOS.encuesta(curso_id, fechaRegistro, observaciones)
+	SELECT DISTINCT
+	m.Curso_Codigo, --FK
+	m.Encuesta_FechaRegistro,
+	m.Encuesta_Observacion	
+	FROM gd_esquema.Maestra m
+	WHERE m.Encuesta_FechaRegistro IS NOT NULL;
 
-	--INSERT INTO LOS_SELECTOS.detalleEncuesta(encuesta_id, pregunta_id)
-	--SELECT
-	--	e.encuesta_id, --FK,PK
-	--	p.pregunta_id --FK,PK
-	--FROM gd_esquema.Maestra m
-	--JOIN LOS_SELECTOS.pregunta p
-	--	ON (p.pregunta = m.Encuesta_Pregunta1 AND p.nota = m.Encuesta_Nota1)
-	--JOIN LOS_SELECTOS.alumno a
-	--	ON (a.legajo = m.Alumno_Legajo)
-	--JOIN LOS_SELECTOS.curso c
-	--	ON (c.codigo = m.Curso_Codigo)
-	--JOIN LOS_SELECTOS.encuesta e
-	--	ON (e.alumno_id = a.alumno_id AND e.curso_id = c.codigo AND e.fechaRegistro = m.Encuesta_FechaRegistro)
-	--WHERE m.Encuesta_Pregunta1 IS NOT NULL;
+	--detalleEncuesta
+	INSERT INTO LOS_SELECTOS.detalleEncuesta (encuesta_id, pregunta_id)
+	SELECT DISTINCT e.encuesta_id, p.pregunta_id
+	FROM (
+    SELECT Encuesta_Pregunta1 AS pregunta, Encuesta_Nota1 AS nota,
+           Encuesta_FechaRegistro, Encuesta_Observacion, Curso_Codigo
+    FROM gd_esquema.Maestra
+    WHERE Encuesta_Pregunta1 IS NOT NULL
+
+    UNION ALL
+
+    SELECT Encuesta_Pregunta2, Encuesta_Nota2,
+           Encuesta_FechaRegistro, Encuesta_Observacion, Curso_Codigo
+    FROM gd_esquema.Maestra
+    WHERE Encuesta_Pregunta2 IS NOT NULL
+
+    UNION ALL
+
+    SELECT Encuesta_Pregunta3, Encuesta_Nota3,
+           Encuesta_FechaRegistro, Encuesta_Observacion, Curso_Codigo
+    FROM gd_esquema.Maestra
+    WHERE Encuesta_Pregunta3 IS NOT NULL
+
+    UNION ALL
+
+    SELECT Encuesta_Pregunta4, Encuesta_Nota4,
+           Encuesta_FechaRegistro, Encuesta_Observacion, Curso_Codigo
+    FROM gd_esquema.Maestra
+    WHERE Encuesta_Pregunta4 IS NOT NULL
+) AS todas
+JOIN LOS_SELECTOS.pregunta p
+    ON LOWER(LTRIM(RTRIM(p.pregunta))) = LOWER(LTRIM(RTRIM(todas.pregunta))) AND p.nota = todas.nota
+JOIN LOS_SELECTOS.encuesta e
+    ON e.fechaRegistro = todas.Encuesta_FechaRegistro
+    AND e.observaciones = todas.Encuesta_Observacion 
+    AND e.curso_id = todas.Curso_Codigo;
 
 	--FACTURA --OK
 	INSERT INTO LOS_SELECTOS.factura(nroFactura, fechaEmision, fechaVencimiento, alumno_id, importeTotal)
