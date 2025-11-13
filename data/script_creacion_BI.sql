@@ -168,6 +168,25 @@ AS
 BEGIN
 	BEGIN TRY
 		BEGIN TRAN
+			--turnos
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_turno(turno_id, turno)
+			SELECT t.turno_id, t.nombre FROM LOS_SELECTOS.turno t
+
+			--categoria
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_categoria(categoria_id, categoria)
+			SELECT c.categoria_id, c.nombre FROM LOS_SELECTOS.categoria c
+
+			--sede
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_sede(sede_id, nombre)
+			SELECT s.sede_id, s.nombre FROM LOS_SELECTOS.sede s
+
+			--rango etario
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_rango_etario (rango_id, rangoMin, rangoMax)
+			VALUES 
+				(1, 0, 25),		 -- <25
+				(2, 25, 35),     -- 25-35
+				(3, 35, 50),     -- 35-50
+				(4, 50, NULL);   -- >50
 
 		COMMIT;
 	END TRY
