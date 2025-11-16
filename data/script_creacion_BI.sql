@@ -21,9 +21,19 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_categoria(
 	categoria VARCHAR(60)
 );
 
+CREATE TABLE BI_LOS_SELECTOS.BI_dim_ubicacion(
+	ubicacion_id BIGINT PRIMARY KEY,
+	localidad VARCHAR(80),
+	direccion VARCHAR(80),
+	provincia VARCHAR(80)
+);
+
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_sede(
 	sede_id BIGINT PRIMARY KEY,
 	nombre VARCHAR(255),
+	ubicacion_id BIGINT --FK
+
+		FOREIGN KEY(ubicacion_id) REFERENCES BI_LOS_SELECTOS.BI_dim_ubicacion(ubicacion_id)
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_rango_etario(
@@ -73,7 +83,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_final(
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_nota_final(
-	inscripcion_id BIGINT PRIMARY KEY,
+	nota_final_id BIGINT PRIMARY KEY,
 	final_id BIGINT, --FK
 	alumno_id BIGINT NOT NULL, --FK
 	profesor_id BIGINT NOT NULL, --FK
@@ -96,7 +106,8 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_encuesta(
 	encuesta_id BIGINT PRIMARY KEY,
 	curso_id BIGINT NOT NULL,
-	bloque_id BIGINT NOT NULL
+	bloque_id BIGINT NOT NULL,
+	fecha_realizada DATE
 
 	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
 	FOREIGN KEY(bloque_id) REFERENCES BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(bloque_id)
@@ -104,7 +115,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_encuesta(
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_medio_pago(
 	medio_id BIGINT PRIMARY KEY,
-	descripcion VARCHAR(20), 
+	descripcion VARCHAR(80), 
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_factura(
@@ -142,13 +153,27 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_pago(
 	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
 );
 
+CREATE TABLE BI_LOS_SELECTOS.BI_dim_examen_tp(
+	examen_id BIGINT PRIMARY KEY,
+	alumno_id BIGINT, --FK
+	curso_id BIGINT, --FK
+	tiempo_id BIGINT, --FK
+	nota TINYINT,
+	presente BIT
+
+	FOREIGN KEY(alumno_id) REFERENCES BI_LOS_SELECTOS.BI_dim_alumno(alumno_id),
+	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
+	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
+
+);
+
 -- ============================================================================
 -- CREACION DE TABLAS DE HECHOS
 -- ============================================================================
 
 --Total: 5 HECHOS
 
--- Hecho: Inscripción
+-- Hecho: Inscripciï¿½n
 CREATE TABLE BI_LOS_SELECTOS.BI_hecho_inscripcion(
 	inscrip_id BIGINT PRIMARY KEY IDENTITY,
 	curso_id BIGINT NOT NULL,
@@ -207,7 +232,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_hecho_facturacionCurso(
 	FOREIGN KEY(medioIdMasComun) REFERENCES BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id)
 );
 
--- Hecho: Encuesta de satisfacción
+-- Hecho: Encuesta de satisfacciï¿½n
 CREATE TABLE BI_LOS_SELECTOS.BI_hecho_satisfaccion(
 	satisfaccion_id BIGINT PRIMARY KEY IDENTITY,
 	profesor_id BIGINT NOT NULL, --FK
@@ -231,7 +256,7 @@ BEGIN
     DECLARE @edad INT;
     SET @edad = DATEDIFF(YEAR, @fechaNacimiento, GETDATE());
 
-    -- Ajuste por si no cumplió años este año
+    -- Ajuste por si no cumpliï¿½ aï¿½os este aï¿½o
     IF (DATEADD(YEAR, @edad, @fechaNacimiento) > GETDATE())
         SET @edad = @edad - 1;
 
@@ -334,7 +359,7 @@ BEGIN
 				ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
 
 			--notas de los finales
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_nota_final(inscripcion_id, final_id, alumno_id, profesor_id, nota, presente, tiempoFinalizacion)
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_nota_final(nota_final_id, final_id, alumno_id, profesor_id, nota, presente, tiempoFinalizacion)
 			SELECT 
 				ev.nro_inscripcion,
 				i.examenFinal_id,
@@ -361,11 +386,12 @@ BEGIN
 				(3, 'Satisfecho', 7, 10);
 			
 			--encuestas
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_encuesta(encuesta_id, curso_id, bloque_id)
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_encuesta(encuesta_id, curso_id, bloque_id,fecha_realizada)
 			SELECT
 				e.encuesta_id,
 				e.curso_id,
-				s.bloque_id
+				s.bloque_id,
+				GETDATE()
 			FROM LOS_SELECTOS.encuesta e
 			JOIN LOS_SELECTOS.detalleEncuesta d
 				ON (d.encuesta_id = e.encuesta_id)
@@ -463,14 +489,23 @@ BEGIN
 			GROUP BY i.curso_id, t.tiempo_id;
 
 			-- HECHO: CURSADA --TODO
+
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_cursada(curso_id, tiempo_id, cantAlumnos, tiempoTotalCurso, cantDesap, cantAprob)
 			SELECT 
 				c.codigo,
 				t.tiempo_id,
 				i.cantConfirm AS cantAlumnos, --los confirmados entran al curso
 				DATEDIFF(DAY, c.fecha_inicio, c.fecha_fin) AS tiempoTotalCurso,
-				--COUNT() AS cantDesap,
-				--COUNT() AS cantAprob revisar notas de todos y calcular!!!!
+				(SELECT COUNT(DISTINCT a.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_alumno a
+				INNER JOIN BI_LOS_SELECTOS.BI_dim_examen_tp e ON e.alumno_id = a.alumno_id
+				WHERE e.nota < 4			
+				) AS cantDesap,
+				(SELECT COUNT(*)
+				FROM BI_LOS_SELECTOS.BI_dim_alumno a
+				INNER JOIN BI_LOS_SELECTOS.BI_dim_examen_tp e 
+				ON e.alumno_id = a.alumno_id
+				GROUP BY a.alumno_id
+				HAVING MIN(e.nota) >= 4) as cantAprob
 			FROM LOS_SELECTOS.curso c
 			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i 
 				ON (i.curso_id = c.codigo)
@@ -510,7 +545,7 @@ BEGIN
 				ON (f.factura_id = p.factura_id)
 			GROUP BY df.curso_id, df.tiempo_id;
 
-			-- HECHO: SATISFACCIÓN x Profesor-Anio
+			-- HECHO: SATISFACCIï¿½N x Profesor-Anio
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_satisfaccion(profesor_id, anio, cantEncuestas, cantInsatisf, cantNeutral, cantSatisf)
 			SELECT
 				c.profesor_id,
@@ -696,7 +731,6 @@ JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON c.profesor_id = p.profesor_id
 GROUP BY h.profesor_id, c.sede_id, h.anio
 ORDER BY h.anio, c.sede_id, h.profesor_id;
-
 
 
 
