@@ -498,7 +498,7 @@ BEGIN
 				DATEDIFF(DAY, c.fecha_inicio, c.fecha_fin) AS tiempoTotalCurso,
 				(SELECT COUNT(DISTINCT a.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_alumno a
 				INNER JOIN BI_LOS_SELECTOS.BI_dim_examen_tp e ON e.alumno_id = a.alumno_id
-				WHERE e.nota < 4			
+				WHERE e.nota < 4		
 				) AS cantDesap,
 				(SELECT COUNT(*)
 				FROM BI_LOS_SELECTOS.BI_dim_alumno a
@@ -615,7 +615,30 @@ JOIN BI_LOS_SELECTOS.BI_dim_curso cu
     ON cu.curso_id = h.curso_id
 GROUP BY t.mes, cu.sede_id;
 
---3. TODO
+--3. Porcentaje de aprobación de cursada por sede, por año. Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP.
+SELECT 
+    t.anio,
+    c.sede_id,
+    SUM(
+        CASE 
+            WHEN (
+                SELECT MIN(examen.nota) 
+					FROM BI_LOS_SELECTOS.BI_dim_examen_tp examen
+					WHERE examen.alumno_id = e.alumno_id AND examen.curso_id  = e.curso_id AND examen.tiempo_id = e.tiempo_id
+				) >= 4 
+            THEN 1 
+            ELSE 0 
+        END
+    ) * 100.0
+    / COUNT(DISTINCT e.alumno_id) AS porcCursadaAprobada
+FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
+JOIN BI_LOS_SELECTOS.BI_dim_curso c
+	ON e.curso_id = c.curso_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
+    ON t.tiempo_id = e.tiempo_id
+GROUP BY 
+    t.anio,
+    c.sede_id;
 
 --4. PROMEDIO DE FINALIZACION DE CURSO x anio y categoria
 SELECT
@@ -731,6 +754,3 @@ JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON c.profesor_id = p.profesor_id
 GROUP BY h.profesor_id, c.sede_id, h.anio
 ORDER BY h.anio, c.sede_id, h.profesor_id;
-
-
-
