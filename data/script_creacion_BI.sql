@@ -488,7 +488,7 @@ BEGIN
 				ON (e.estado_id = ei.estado_id)
 			GROUP BY i.curso_id, t.tiempo_id;
 
-			-- HECHO: CURSADA --TODO
+			-- HECHO: CURSADA
 
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_cursada(curso_id, tiempo_id, cantAlumnos, tiempoTotalCurso, cantDesap, cantAprob)
 			SELECT 
