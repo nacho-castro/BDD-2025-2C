@@ -264,7 +264,7 @@ BEGIN
 END;
 
 GO
-CREATE PROCEDURE BI_LOS_SELECTOS.migracion_etl_dimensiones
+CREATE OR ALTER PROCEDURE BI_LOS_SELECTOS.migracion_etl_dimensiones
 AS
 BEGIN
 	BEGIN TRY
@@ -466,7 +466,7 @@ BEGIN
 END;
 
 GO
-CREATE PROCEDURE migracion_etl_hechos
+CREATE OR ALTER PROCEDURE BI_LOS_SELECTOS.migracion_etl_hechos
 AS
 BEGIN
 	BEGIN TRY
@@ -477,8 +477,8 @@ BEGIN
 				i.curso_id,
 				t.tiempo_id,
 				COUNT(DISTINCT i.nro_inscripcion) AS cantInscriptos,
-				COUNT(CASE WHEN e.descripcion = 'Rechazada' THEN 1 END) AS cantRechaz,
-				COUNT(CASE WHEN e.descripcion = 'Confirmada' THEN 1 END) AS cantConfirm
+				SUM(CASE WHEN e.descripcion = 'Rechazada' THEN 1 END) AS cantRechaz,
+				SUM(CASE WHEN e.descripcion = 'Confirmada' THEN 1 END) AS cantConfirm
 			FROM LOS_SELECTOS.inscripcion i
 			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
 				ON (t.anio = YEAR(i.fecha) AND t.mes = MONTH(i.fecha))
@@ -489,12 +489,11 @@ BEGIN
 			GROUP BY i.curso_id, t.tiempo_id;
 
 			-- HECHO: CURSADA
-
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_cursada(curso_id, tiempo_id, cantAlumnos, tiempoTotalCurso, cantDesap, cantAprob)
 			SELECT 
 				c.codigo,
 				t.tiempo_id,
-				i.cantConfirm AS cantAlumnos, --los confirmados entran al curso
+				i.cantConfirm AS cantAlumnos,
 				DATEDIFF(DAY, c.fecha_inicio, c.fecha_fin) AS tiempoTotalCurso,
 				(SELECT COUNT(DISTINCT a.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_alumno a
 				INNER JOIN BI_LOS_SELECTOS.BI_dim_examen_tp e ON e.alumno_id = a.alumno_id
@@ -578,44 +577,93 @@ EXECUTE BI_LOS_SELECTOS.migracion_etl_dimensiones;
 EXECUTE BI_LOS_SELECTOS.migracion_etl_hechos;
 
 -- ============================================================================
--- CREACION DE VISTAS PARA LOS INDICADORES DE NEGOCIO
+-- VIEW 1 CATEGORIAS
+-- Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.-- 
+-- ============================================================================
+GO
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_categorias
+AS
+SELECT 
+    anio,
+    sede,
+    categoria,
+    cantidad_inscriptos
+FROM (
+    SELECT
+        t.anio,
+        cu.sede_id as sede,
+        c.categoria,
+        SUM(h.cantInscriptos) AS cantidad_inscriptos,
+        ROW_NUMBER() OVER (
+            PARTITION BY t.anio, cu.sede_id
+            ORDER BY SUM(h.cantInscriptos) DESC
+        ) AS ranking
+    FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
+    JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
+    JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON c.categoria_id = cu.categoria_id
+    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
+    GROUP BY t.anio, cu.sede_id, c.categoria
+) subconsulta
+WHERE ranking <= 3;
+GO
+
+-- ============================================================================
+-- VIEW 1 TURNOS
+-- Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.
+-- ============================================================================
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_turnos
+AS
+SELECT 
+    anio,
+    sede,
+    turno,
+    cantidad_inscriptos
+FROM (
+    SELECT
+        t.anio,
+		cu.sede_id as sede,
+        tu.turno,
+        SUM(h.cantInscriptos) AS cantidad_inscriptos,
+        ROW_NUMBER() OVER (
+            PARTITION BY t.anio, cu.sede_id 
+            ORDER BY SUM(h.cantInscriptos) DESC
+        ) AS ranking
+    FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
+    JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
+    JOIN BI_LOS_SELECTOS.BI_dim_turno tu ON tu.turno_id = cu.turno_id
+    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
+    GROUP BY t.anio, cu.sede_id, tu.turno
+) subconsulta
+WHERE ranking <= 3;
+GO
+
+-- ============================================================================
+-- VIEW 2
+--Tasa de rechazo de inscripciones: Porcentaje de inscripciones rechazadas por mes por sede (sobre el total de inscripciones).
 -- ============================================================================
 
---1.
---a) TOP 3 CATEGORIAS MAS SOLICITADAS
-SELECT TOP 3
-    c.categoria,
-    SUM(h.cantInscriptos) AS totalInscriptos
-FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
-JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON (cu.curso_id = h.curso_id)
-JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON (c.categoria_id = cu.categoria_id)
-GROUP BY c.categoria
-ORDER BY totalInscriptos DESC;
-
---1. 
---b) TOP 3 TURNOS MAS SOLICITADOS
-SELECT TOP 3
-    t.turno,
-    SUM(h.cantInscriptos) AS totalInscriptos
-FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
-JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_turno t ON t.turno_id = cu.turno_id
-GROUP BY t.turno
-ORDER BY totalInscriptos DESC;
-
--- 2. Porcentaje de inscripciones rechazadas por MES por SEDE
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
+AS
 SELECT
-    t.mes,
+    t.anio,
+	t.mes,
     cu.sede_id,
-    SUM(h.cantRechaz) * 1.0 / SUM(h.cantInscriptos) AS porcRechazadas
+    SUM(h.cantRechaz) * 100.0 / NULLIF(SUM(h.cantInscriptos), 0) AS porcRechazadas
 FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
     ON t.tiempo_id = h.tiempo_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso cu 
     ON cu.curso_id = h.curso_id
-GROUP BY t.mes, cu.sede_id;
+GROUP BY t.anio,t.mes, cu.sede_id;
+GO
 
---3. Porcentaje de aprobación de cursada por sede, por año. Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP.
+-- ============================================================================
+-- VIEW 3
+-- Comparación de desempeño de cursada por sede: Porcentaje de aprobación de cursada por sede, por año. 
+-- Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP.
+-- ============================================================================
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_desempenioCursada
+AS
 SELECT 
     t.anio,
     c.sede_id,
@@ -639,6 +687,7 @@ JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
 GROUP BY 
     t.anio,
     c.sede_id;
+GO
 
 --4. PROMEDIO DE FINALIZACION DE CURSO x anio y categoria
 SELECT
