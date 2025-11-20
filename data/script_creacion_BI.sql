@@ -639,7 +639,7 @@ GO
 
 -- ============================================================================
 -- VIEW 2
---Tasa de rechazo de inscripciones: Porcentaje de inscripciones rechazadas por mes por sede (sobre el total de inscripciones).
+-- Tasa de rechazo de inscripciones: Porcentaje de inscripciones rechazadas por mes por sede (sobre el total de inscripciones).
 -- ============================================================================
 
 CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
@@ -659,8 +659,8 @@ GO
 
 -- ============================================================================
 -- VIEW 3
--- Comparación de desempeño de cursada por sede: Porcentaje de aprobación de cursada por sede, por año. 
--- Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP.
+/* Comparación de desempeño de cursada por sede: Porcentaje de aprobación de cursada por sede, por año. 
+Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP. */
 -- ============================================================================
 CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_desempenioCursada
 AS
@@ -689,20 +689,24 @@ GROUP BY
     c.sede_id;
 GO
 
---4. PROMEDIO DE FINALIZACION DE CURSO x anio y categoria
+-- ============================================================================
+-- VIEW 4
+/* Tiempo promedio entre el inicio del curso y la aprobación del final según la categoría de los cursos, por año. 
+(Tener en cuenta el año de inicio del curso) */
+-- ============================================================================
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_tiempoPromedioFinalizacionCurso
+AS
 SELECT
-	t.anio,
+	YEAR(c.fechaInicio) as AnioInicio,
 	c.categoria_id,
     AVG(ef.tFinalizacionPromedio) finalizacionPromedio
 FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef
 JOIN BI_LOS_SELECTOS.BI_dim_final f 
     ON f.final_id = ef.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
-    ON t.tiempo_id = f.tiempo_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON f.curso_id = c.curso_id
-GROUP BY t.anio, c.categoria_id
-ORDER BY t.anio
+GROUP BY YEAR(c.fechaInicio), c.categoria_id
+GO
 
 --5 nota promedio x rango etario y categoria
 SELECT
