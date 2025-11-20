@@ -786,7 +786,8 @@ GO
 /* Se calcula teniendo en cuenta el total de importes adeudados sobre facturación esperada en el mes. 
 El monto adeudado se obtiene a partir de las facturas que no tengan pago registrado en dicho mes. */
 -- ============================================================================
-
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_tasaMorosidad
+AS
 SELECT
     t.mes,
     t.anio,
@@ -796,15 +797,19 @@ JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
     ON t.tiempo_id = f.tiempo_id
 GROUP BY
     t.mes, t.anio
-ORDER BY
-    t.anio, t.mes;
+GO 
 
---9
+-- ============================================================================
+-- VIEW 9
+/* Las 3 categorías de cursos que generan mayores ingresos por sede, por año. */
+-- ============================================================================
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_ingresosDeCursos
+AS
 SELECT
-    x.anio,
-    x.sede_id,
-    x.categoria,
-    x.ingresos
+    ranking.anio,
+    ranking.sede_id,
+    ranking.categoria,
+    ranking.ingresos
 FROM (
     SELECT
         t.anio,
@@ -816,8 +821,6 @@ FROM (
             ORDER BY SUM(df.importe) DESC
         ) AS rn
     FROM BI_LOS_SELECTOS.BI_dim_detalle_factura df
-    JOIN BI_LOS_SELECTOS.BI_dim_factura f
-        ON f.factura_id = df.factura_id
     JOIN BI_LOS_SELECTOS.BI_dim_curso cu
         ON cu.curso_id = df.curso_id
     JOIN BI_LOS_SELECTOS.BI_dim_categoria cat
@@ -826,9 +829,9 @@ FROM (
         ON t.tiempo_id = df.tiempo_id
     GROUP BY
         t.anio, cu.sede_id, cat.categoria
-) x
-WHERE x.rn <= 3
-ORDER BY x.anio, x.sede_id, x.rn;
+) ranking
+WHERE ranking.rn <= 3
+GO
 
 --10
 SELECT
