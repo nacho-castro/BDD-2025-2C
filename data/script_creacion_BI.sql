@@ -721,7 +721,7 @@ SELECT
 	a.rango_etario_id,
     AVG(CAST(nf.nota AS DECIMAL(10,2))) AS nota,
 	t.anio,
-	((t.mes - 1) / 6) + 1 AS semestre
+	t.semestre
 FROM BI_LOS_SELECTOS.BI_dim_nota_final nf 
 JOIN BI_LOS_SELECTOS.BI_dim_final f 
     ON f.final_id = nf.final_id
@@ -731,7 +731,7 @@ JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON f.curso_id = c.curso_id
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
     ON t.tiempo_id = f.tiempo_id
-GROUP BY c.categoria_id, a.rango_etario_id,t.anio, ((t.mes - 1) / 6) + 1;
+GROUP BY c.categoria_id, a.rango_etario_id,t.anio, t.semestre;
 GO
 
 SELECT * FROM BI_LOS_SELECTOS.BI_vista_promedioNotaFinales -- VER si dejamos null en promedio nota, no hay semestre 1
@@ -753,7 +753,7 @@ AS
 SELECT
     c.sede_id,
 	t.anio,
-	((t.mes - 1) / 6) + 1 AS semestre,
+	t.semestre,
     CAST(SUM(ef.cantAusentes) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(ef.cantInscriptos), 0) AS tasaAusentismo
 FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef 
 JOIN BI_LOS_SELECTOS.BI_dim_final f
@@ -762,7 +762,7 @@ JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON f.curso_id = c.curso_id
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
     ON t.tiempo_id = f.tiempo_id
-GROUP BY c.sede_id,t.anio, ((t.mes - 1) / 6) + 1
+GROUP BY c.sede_id,t.anio, semestre
 GO
 
 -- ============================================================================
@@ -773,12 +773,12 @@ CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_desvioPagos
 AS
 SELECT
     t.anio,
-	((t.mes - 1) / 6) + 1 AS semestre,
+	t.semestre,
     CAST(SUM(f.cantPagosDesviados) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(f.cantFacturasPagadas), 0) AS porcentajeDesvio
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
     ON t.tiempo_id = f.tiempo_id
-GROUP BY t.anio, ((t.mes - 1) / 6) + 1 
+GROUP BY t.anio, t.semestre
 GO
 
 --8
