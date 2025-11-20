@@ -669,23 +669,12 @@ AS
 SELECT 
     t.anio,
     c.sede_id,
-    SUM(
-        CASE 
-            WHEN (
-                SELECT MIN(examen.nota) 
-					FROM BI_LOS_SELECTOS.BI_dim_examen_tp examen
-					WHERE examen.alumno_id = e.alumno_id AND examen.curso_id  = e.curso_id AND examen.tiempo_id = e.tiempo_id
-				) >= 4 
-            THEN 1 
-            ELSE 0 
-        END
-    ) * 100.0
-    / COUNT(DISTINCT e.alumno_id) AS porcCursadaAprobada
-FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
+	(CAST(SUM(hc.cantAprob) AS DECIMAL(10,4)) / NULLIF(SUM(hc.cantAlumnos), 0)) * 100 AS porcCursadaAprobada
+FROM BI_LOS_SELECTOS.BI_hecho_cursada hc
 JOIN BI_LOS_SELECTOS.BI_dim_curso c
-	ON e.curso_id = c.curso_id
+    ON hc.curso_id = c.curso_id
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
-    ON t.tiempo_id = e.tiempo_id
+    ON hc.tiempo_id = t.tiempo_id
 GROUP BY 
     t.anio,
     c.sede_id;
