@@ -265,7 +265,7 @@ BEGIN
 END;
 
 GO
-CREATE OR ALTER PROCEDURE BI_LOS_SELECTOS.migracion_etl_dimensiones
+CREATE PROCEDURE BI_LOS_SELECTOS.migracion_etl_dimensiones
 AS
 BEGIN
 	BEGIN TRY
@@ -293,15 +293,15 @@ BEGIN
 
 			--turnos
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_turno(turno_id, turno)
-			SELECT t.turno_id, t.nombre FROM LOS_SELECTOS.turno t
+			SELECT t.turno_id, t.nombre FROM LOS_SELECTOS.turno t;
 
 			--categoria
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_categoria(categoria_id, categoria)
-			SELECT c.categoria_id, c.nombre FROM LOS_SELECTOS.categoria c
+			SELECT c.categoria_id, c.nombre FROM LOS_SELECTOS.categoria c;
 
 			--sede
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_sede(sede_id, nombre)
-			SELECT s.sede_id, s.nombre FROM LOS_SELECTOS.sede s
+			SELECT s.sede_id, s.nombre FROM LOS_SELECTOS.sede s;
 
 			--rango etario
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_rango_etario (rango_id, rangoMin, rangoMax)
@@ -404,7 +404,7 @@ BEGIN
 
 			--medio pago
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id, descripcion)
-			SELECT m.medio_id, m.descripcion FROM LOS_SELECTOS.medioDePago m
+			SELECT m.medio_id, m.descripcion FROM LOS_SELECTOS.medioDePago m;
 
 			--factura
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_factura(factura_id, alumno_id, fechaEmision, fechaVto, importeTotal)
@@ -442,7 +442,7 @@ BEGIN
 				END AS desviado
 			FROM LOS_SELECTOS.pago p
 			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(p.fecha) AND t.mes = MONTH(p.fecha))
-			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (f.factura_id = p.nroFactura)
+			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (f.factura_id = p.nroFactura);
 		COMMIT;
 	END TRY
 
@@ -453,7 +453,7 @@ BEGIN
 END;
 
 GO
-CREATE OR ALTER PROCEDURE BI_LOS_SELECTOS.migracion_etl_hechos
+CREATE PROCEDURE BI_LOS_SELECTOS.migracion_etl_hechos
 AS
 BEGIN
 	BEGIN TRY
@@ -494,7 +494,7 @@ BEGIN
 				) AS cantAprob
 			FROM LOS_SELECTOS.curso c
 			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i ON (i.curso_id = c.codigo)
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.anio = YEAR(c.fecha_inicio) AND t.mes = MONTH(c.fecha_inicio)
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.anio = YEAR(c.fecha_inicio) AND t.mes = MONTH(c.fecha_inicio);
 
 			-- HECHO: NOTAS x Evaluacion FINAL
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_evaluacionFinal(final_id, cantInscriptos, cantAprobados, cantDesaprobados, cantAusentes, cantPresentes, tFinalizacionPromedio)
@@ -550,16 +550,17 @@ END;
 -- ============================================================================
 -- EJECUCION DEL PROCESO DE MIGRACION COMPLETA
 -- ============================================================================
-
+GO
 EXECUTE BI_LOS_SELECTOS.migracion_etl_dimensiones;
+GO
 EXECUTE BI_LOS_SELECTOS.migracion_etl_hechos;
-
+GO
 -- ============================================================================
 -- VIEW 1 CATEGORIAS
 -- Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.-- 
 -- ============================================================================
 GO
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_categorias
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_categorias
 AS
 SELECT 
     anio,
@@ -583,13 +584,13 @@ FROM (
     GROUP BY t.anio, cu.sede_id, c.categoria
 ) subconsulta
 WHERE ranking <= 3;
-GO
 
 -- ============================================================================
 -- VIEW 1 TURNOS
 -- Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_turnos
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_turnos
 AS
 SELECT 
     anio,
@@ -613,14 +614,13 @@ FROM (
     GROUP BY t.anio, cu.sede_id, tu.turno
 ) subconsulta
 WHERE ranking <= 3;
-GO
 
 -- ============================================================================
 -- VIEW 2
 -- Tasa de rechazo de inscripciones: Porcentaje de inscripciones rechazadas por mes por sede (sobre el total de inscripciones).
 -- ============================================================================
-
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
 AS
 SELECT
     t.anio,
@@ -631,14 +631,14 @@ FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
 GROUP BY t.anio,t.mes, cu.sede_id;
-GO
 
 -- ============================================================================
 -- VIEW 3
 /* Comparación de desempeño de cursada por sede: Porcentaje de aprobación de cursada por sede, por año. 
 Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP. */
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_desempenioCursada
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_desempenioCursada
 AS
 SELECT 
     t.anio,
@@ -648,14 +648,14 @@ FROM BI_LOS_SELECTOS.BI_hecho_cursada hc
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON hc.curso_id = c.curso_id
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON hc.tiempo_id = t.tiempo_id
 GROUP BY t.anio, c.sede_id;
-GO
 
 -- ============================================================================
 -- VIEW 4
 /* Tiempo promedio entre el inicio del curso y la aprobación del final según la categoría de los cursos, por año. 
 (Tener en cuenta el año de inicio del curso) */
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_tiempoPromedioFinalizacionCurso
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_tiempoPromedioFinalizacionCurso
 AS
 SELECT
 	YEAR(c.fechaInicio) as AnioInicio,
@@ -664,14 +664,14 @@ SELECT
 FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef
 JOIN BI_LOS_SELECTOS.BI_dim_final f ON f.final_id = ef.final_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
-GROUP BY YEAR(c.fechaInicio), c.categoria_id
-GO
+GROUP BY YEAR(c.fechaInicio), c.categoria_id;
 
 -- ============================================================================
 -- VIEW 5
 /* Promedio de nota de finales según el rango etario del alumno y la categoría del curso por semestre. */
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_promedioNotaFinales
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_promedioNotaFinales
 AS
 SELECT
 	c.categoria_id,
@@ -685,14 +685,13 @@ JOIN BI_LOS_SELECTOS.BI_dim_alumno a ON a.alumno_id = nf.alumno_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
 GROUP BY c.categoria_id, a.rango_etario_id,t.anio, t.semestre;
-GO
 
 -- ============================================================================
 -- VIEW 6
 /* Porcentaje de ausentes a finales (sobre la cantidad de inscriptos) por semestre por sede. */
 -- ============================================================================
-
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_tasaAusentismo
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_tasaAusentismo
 AS
 SELECT
     c.sede_id,
@@ -703,14 +702,14 @@ FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef
 JOIN BI_LOS_SELECTOS.BI_dim_final f ON ef.final_id = f.final_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY c.sede_id,t.anio, semestre
-GO
+GROUP BY c.sede_id,t.anio, semestre;
 
 -- ============================================================================
 -- VIEW 7
 /* Porcentaje de pagos realizados fuera de término por semestre. */
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_desvioPagos
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_desvioPagos
 AS
 SELECT
     t.anio,
@@ -718,15 +717,15 @@ SELECT
     CAST(SUM(f.cantPagosDesviados) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(f.cantFacturasPagadas), 0) AS porcentajeDesvio
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY t.anio, t.semestre
-GO
+GROUP BY t.anio, t.semestre;
 
 -- ============================================================================
 -- VIEW 8
 /* Se calcula teniendo en cuenta el total de importes adeudados sobre facturación esperada en el mes. 
 El monto adeudado se obtiene a partir de las facturas que no tengan pago registrado en dicho mes. */
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_tasaMorosidad
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_tasaMorosidad
 AS
 SELECT
     t.mes,
@@ -734,14 +733,14 @@ SELECT
     SUM(f.totalAdeudado) / NULLIF(SUM(f.totalEsperado), 0) AS tasaMorosidad
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY t.mes, t.anio
-GO 
+GROUP BY t.mes, t.anio;
 
 -- ============================================================================
 -- VIEW 9
 /* Las 3 categorías de cursos que generan mayores ingresos por sede, por año. */
 -- ============================================================================
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_ingresosDeCursos
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_ingresosDeCursos
 AS
 SELECT
     ranking.anio,
@@ -764,15 +763,14 @@ FROM (
     JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = df.tiempo_id
     GROUP BY t.anio, cu.sede_id, cat.categoria
 ) ranking
-WHERE ranking.rn <= 3
-GO
+WHERE ranking.rn <= 3;
 
 -- ============================================================================
 -- VIEW 10
 /* Índice de satisfacción anual, según rango etario de los profesores y sede. */
 -- ============================================================================
-
-CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_indiceSatisfaccion
+GO
+CREATE VIEW BI_LOS_SELECTOS.BI_vista_indiceSatisfaccion
 AS
 SELECT
     p.rango_etario_id,
@@ -785,5 +783,5 @@ SELECT
 FROM BI_LOS_SELECTOS.BI_hecho_satisfaccion h
 JOIN BI_LOS_SELECTOS.BI_dim_profesor p ON p.profesor_id = h.profesor_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON c.profesor_id = p.profesor_id
-GROUP BY p.rango_etario_id, c.sede_id, h.anio
+GROUP BY p.rango_etario_id, c.sede_id, h.anio;
 GO
