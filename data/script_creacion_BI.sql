@@ -8,7 +8,8 @@ GO
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_tiempo(
 	tiempo_id BIGINT PRIMARY KEY IDENTITY,
 	anio INT, 
-	mes INT
+	mes TINYINT,
+	semestre TINYINT
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_turno(
@@ -271,10 +272,11 @@ BEGIN
 		BEGIN TRAN
 
 			--tiempo
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_tiempo (anio, mes)
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_tiempo (anio, mes, semestre)
 			SELECT DISTINCT
 				YEAR(fecha) AS anio,
-				MONTH(fecha) AS mes
+				MONTH(fecha) AS mes,
+				CASE WHEN MONTH(fecha) <= 6 THEN 1 ELSE 2 END
 			FROM (
 				SELECT p.fecha
 				FROM LOS_SELECTOS.pago p
@@ -763,16 +765,21 @@ JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
 GROUP BY c.sede_id,t.anio, ((t.mes - 1) / 6) + 1
 GO
 
---7 % desvio de pagos x anio
+-- ============================================================================
+-- VIEW 7
+/* Porcentaje de pagos realizados fuera de término por semestre. */
+-- ============================================================================
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_desvioPagos
+AS
 SELECT
     t.anio,
-    CAST(SUM(f.cantPagosDesviados) AS FLOAT)
-        / NULLIF(SUM(f.cantFacturasPagadas), 0) AS porcentajeDesvio
+	((t.mes - 1) / 6) + 1 AS semestre,
+    CAST(SUM(f.cantPagosDesviados) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(f.cantFacturasPagadas), 0) AS porcentajeDesvio
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
     ON t.tiempo_id = f.tiempo_id
-GROUP BY t.anio
-ORDER BY t.anio;
+GROUP BY t.anio, ((t.mes - 1) / 6) + 1 
+GO
 
 --8
 SELECT
