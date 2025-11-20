@@ -270,7 +270,6 @@ AS
 BEGIN
 	BEGIN TRY
 		BEGIN TRAN
-
 			--tiempo
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_tiempo (anio, mes, semestre)
 			SELECT DISTINCT
@@ -357,8 +356,7 @@ BEGIN
 				exf.curso_id,
 				t.tiempo_id
 			FROM LOS_SELECTOS.examenFinal exf
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
 
 			--notas de los finales
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_nota_final(nota_final_id, final_id, alumno_id, profesor_id, nota, presente, tiempoFinalizacion)
@@ -371,14 +369,10 @@ BEGIN
 				ev.presente,
 				DATEDIFF(DAY, c.fecha_inicio, exf.fecha_hora) AS tiempoFinalizacion
 			FROM LOS_SELECTOS.evaluacionFinal ev
-			JOIN LOS_SELECTOS.inscripcionFinal i
-				ON (ev.nro_inscripcion = i.nro_inscripcion)
-			JOIN LOS_SELECTOS.examenFinal exf
-				ON (i.examenFinal_id = exf.final_id) --conocer fecha final
-			JOIN LOS_SELECTOS.curso c 
-				ON (c.codigo = exf.curso_id) --conocer fecha inicio
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
+			JOIN LOS_SELECTOS.inscripcionFinal i ON (ev.nro_inscripcion = i.nro_inscripcion)
+			JOIN LOS_SELECTOS.examenFinal exf ON (i.examenFinal_id = exf.final_id) --conocer fecha final
+			JOIN LOS_SELECTOS.curso c ON (c.codigo = exf.curso_id) --conocer fecha inicio
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
 
 			--satisfaccion
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(bloque_id, nombre, notaMin, notaMax)
@@ -395,8 +389,7 @@ BEGIN
 				s.bloque_id,
 				GETDATE()
 			FROM LOS_SELECTOS.encuesta e
-			JOIN LOS_SELECTOS.detalleEncuesta d
-				ON (d.encuesta_id = e.encuesta_id)
+			JOIN LOS_SELECTOS.detalleEncuesta d ON (d.encuesta_id = e.encuesta_id)
 			JOIN (
 				-- Obtener el promedio por encuesta
 				SELECT 
@@ -406,12 +399,8 @@ BEGIN
 				JOIN LOS_SELECTOS.pregunta p ON (p.pregunta_id = d.pregunta_id)
 				GROUP BY d.encuesta_id
 			) prom ON (prom.encuesta_id = e.encuesta_id)
-			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion s 
-				ON (prom.promedio BETWEEN s.notaMin AND s.notaMax)
-			GROUP BY
-				e.encuesta_id,
-				e.curso_id,
-				s.bloque_id;
+			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion s ON (prom.promedio BETWEEN s.notaMin AND s.notaMax)
+			GROUP BY e.encuesta_id, e.curso_id, s.bloque_id;
 
 			--medio pago
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id, descripcion)
@@ -437,8 +426,7 @@ BEGIN
 				d.importe,
 				t.tiempo_id
 			FROM LOS_SELECTOS.detalleFactura d
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON (t.anio = d.periodo_anio AND t.mes = d.periodo_mes);
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = d.periodo_anio AND t.mes = d.periodo_mes);
 			
 			--pago
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_pago(pago_id, medio_id, tiempo_id, factura_id, importe, desviado)
@@ -453,11 +441,8 @@ BEGIN
 					ELSE 0                            -- pago normal
 				END AS desviado
 			FROM LOS_SELECTOS.pago p
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON (t.anio = YEAR(p.fecha) AND t.mes = MONTH(p.fecha))
-			JOIN BI_LOS_SELECTOS.BI_dim_factura f
-				ON (f.factura_id = p.nroFactura)
-
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(p.fecha) AND t.mes = MONTH(p.fecha))
+			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (f.factura_id = p.nroFactura)
 		COMMIT;
 	END TRY
 
@@ -482,12 +467,9 @@ BEGIN
 				SUM(CASE WHEN e.descripcion = 'Rechazada' THEN 1 END) AS cantRechaz,
 				SUM(CASE WHEN e.descripcion = 'Confirmada' THEN 1 END) AS cantConfirm
 			FROM LOS_SELECTOS.inscripcion i
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON (t.anio = YEAR(i.fecha) AND t.mes = MONTH(i.fecha))
-			JOIN LOS_SELECTOS.estadoXinscripcion ei
-				ON (ei.inscripcion_id = i.nro_inscripcion)
-			JOIN LOS_SELECTOS.estado e
-				ON (e.estado_id = ei.estado_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(i.fecha) AND t.mes = MONTH(i.fecha))
+			JOIN LOS_SELECTOS.estadoXinscripcion ei ON (ei.inscripcion_id = i.nro_inscripcion)
+			JOIN LOS_SELECTOS.estado e ON (e.estado_id = ei.estado_id)
 			GROUP BY i.curso_id, t.tiempo_id;
 
 			-- HECHO: CURSADA
@@ -511,11 +493,8 @@ BEGIN
 				 ) AS aprobados_temp
 				) AS cantAprob
 			FROM LOS_SELECTOS.curso c
-			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i 
-				ON (i.curso_id = c.codigo)
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON t.anio = YEAR(c.fecha_inicio)
-				AND t.mes = MONTH(c.fecha_inicio)
+			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i ON (i.curso_id = c.codigo)
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.anio = YEAR(c.fecha_inicio) AND t.mes = MONTH(c.fecha_inicio)
 
 			-- HECHO: NOTAS x Evaluacion FINAL
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_evaluacionFinal(final_id, cantInscriptos, cantAprobados, cantDesaprobados, cantAusentes, cantPresentes, tFinalizacionPromedio)
@@ -542,13 +521,11 @@ BEGIN
 				COUNT(DISTINCT CASE WHEN p.factura_id IS NOT NULL THEN f.factura_id END) AS cantFacturasPagadas,
 				COUNT(DISTINCT CASE WHEN p.factura_id IS NULL THEN f.factura_id END) AS cantFacturasImpagas
 			FROM BI_LOS_SELECTOS.BI_dim_detalle_factura df
-			JOIN BI_LOS_SELECTOS.BI_dim_factura f
-				ON (df.factura_id = f.factura_id)
-			LEFT JOIN BI_LOS_SELECTOS.BI_dim_pago p --LEFT: pueden no existir pagos
-				ON (f.factura_id = p.factura_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (df.factura_id = f.factura_id)
+			LEFT JOIN BI_LOS_SELECTOS.BI_dim_pago p ON (f.factura_id = p.factura_id) --LEFT: pueden no existir pagos
 			GROUP BY df.curso_id, df.tiempo_id;
 
-			-- HECHO: SATISFACCI�N x Profesor-Anio
+			-- HECHO: SATISFACCIÓN x Profesor-Anio
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_satisfaccion(profesor_id, anio, cantEncuestas, cantInsatisf, cantNeutral, cantSatisf)
 			SELECT
 				c.profesor_id,
@@ -557,13 +534,10 @@ BEGIN
 				SUM(CASE WHEN b.nombre = 'Insatisfecho' THEN 1 ELSE 0 END) AS cantInsatisf,
 				SUM(CASE WHEN b.nombre = 'Neutral' THEN 1 ELSE 0 END) AS cantNeutral,
 				SUM(CASE WHEN b.nombre = 'Satisfecho' THEN 1 ELSE 0 END) AS cantSatisf
-			FROM BI_LOS_SELECTOS.BI_dim_encuesta e
-			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion b
-				ON e.bloque_id = b.bloque_id
-			JOIN BI_LOS_SELECTOS.BI_dim_curso c
-				ON e.curso_id = c.curso_id
+			FROM BI_LOS_SELECTOS.BI_dim_encuesta e 
+			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion b ON e.bloque_id = b.bloque_id
+			JOIN BI_LOS_SELECTOS.BI_dim_curso c ON e.curso_id = c.curso_id
 			GROUP BY c.profesor_id, YEAR(c.fechaInicio);
-
 		COMMIT;
 	END TRY
 
@@ -654,10 +628,8 @@ SELECT
     cu.sede_id,
     SUM(h.cantRechaz) * 100.0 / NULLIF(SUM(h.cantInscriptos), 0) AS porcRechazadas
 FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
-    ON t.tiempo_id = h.tiempo_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso cu 
-    ON cu.curso_id = h.curso_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
+JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
 GROUP BY t.anio,t.mes, cu.sede_id;
 GO
 
@@ -673,17 +645,13 @@ SELECT
     c.sede_id,
 	(CAST(SUM(hc.cantAprob) AS DECIMAL(10,4)) / NULLIF(SUM(hc.cantAlumnos), 0)) * 100 AS porcCursadaAprobada
 FROM BI_LOS_SELECTOS.BI_hecho_cursada hc
-JOIN BI_LOS_SELECTOS.BI_dim_curso c
-    ON hc.curso_id = c.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
-    ON hc.tiempo_id = t.tiempo_id
-GROUP BY 
-    t.anio,
-    c.sede_id;
+JOIN BI_LOS_SELECTOS.BI_dim_curso c ON hc.curso_id = c.curso_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON hc.tiempo_id = t.tiempo_id
+GROUP BY t.anio, c.sede_id;
 GO
 
 -- ============================================================================
--- VIEW 4 -- VER
+-- VIEW 4
 /* Tiempo promedio entre el inicio del curso y la aprobación del final según la categoría de los cursos, por año. 
 (Tener en cuenta el año de inicio del curso) */
 -- ============================================================================
@@ -694,10 +662,8 @@ SELECT
 	c.categoria_id,
     AVG(ef.tFinalizacionPromedio) finalizacionPromedio
 FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef
-JOIN BI_LOS_SELECTOS.BI_dim_final f 
-    ON f.final_id = ef.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c
-    ON f.curso_id = c.curso_id
+JOIN BI_LOS_SELECTOS.BI_dim_final f ON f.final_id = ef.final_id
+JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
 GROUP BY YEAR(c.fechaInicio), c.categoria_id
 GO
 
@@ -714,17 +680,17 @@ SELECT
 	t.anio,
 	t.semestre
 FROM BI_LOS_SELECTOS.BI_dim_nota_final nf 
-JOIN BI_LOS_SELECTOS.BI_dim_final f 
-    ON f.final_id = nf.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_alumno a 
-    ON a.alumno_id = nf.alumno_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c
-    ON f.curso_id = c.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-    ON t.tiempo_id = f.tiempo_id
+JOIN BI_LOS_SELECTOS.BI_dim_final f ON f.final_id = nf.final_id
+JOIN BI_LOS_SELECTOS.BI_dim_alumno a ON a.alumno_id = nf.alumno_id
+JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
 GROUP BY c.categoria_id, a.rango_etario_id,t.anio, t.semestre;
 GO
 
+
+-- BORRARRRRRRRRRRR ============================================================================
+
+SELECT * FROM BI_LOS_SELECTOS.BI_dim_nota_final
 SELECT * FROM BI_LOS_SELECTOS.BI_vista_promedioNotaFinales -- VER si dejamos null en promedio nota, no hay semestre 1
 -- tiene sentido que no haya semestres 1 ya que todos los meses de la consulta van del 7 al 12
 SELECT DISTINCT t.mes, t.anio
@@ -733,6 +699,10 @@ JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
     ON t.tiempo_id = f.tiempo_id
 ORDER BY t.anio, t.mes;
 GO
+-- BORRARRRRRRRRRRR ============================================================================
+
+
+
 
 -- ============================================================================
 -- VIEW 6
@@ -747,12 +717,9 @@ SELECT
 	t.semestre,
     CAST(SUM(ef.cantAusentes) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(ef.cantInscriptos), 0) AS tasaAusentismo
 FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef 
-JOIN BI_LOS_SELECTOS.BI_dim_final f
-    ON ef.final_id = f.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c
-    ON f.curso_id = c.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-    ON t.tiempo_id = f.tiempo_id
+JOIN BI_LOS_SELECTOS.BI_dim_final f ON ef.final_id = f.final_id
+JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
 GROUP BY c.sede_id,t.anio, semestre
 GO
 
@@ -767,8 +734,7 @@ SELECT
 	t.semestre,
     CAST(SUM(f.cantPagosDesviados) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(f.cantFacturasPagadas), 0) AS porcentajeDesvio
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-    ON t.tiempo_id = f.tiempo_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
 GROUP BY t.anio, t.semestre
 GO
 
@@ -784,10 +750,8 @@ SELECT
     t.anio,
     SUM(f.totalAdeudado) / NULLIF(SUM(f.totalEsperado), 0) AS tasaMorosidad
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-    ON t.tiempo_id = f.tiempo_id
-GROUP BY
-    t.mes, t.anio
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
+GROUP BY t.mes, t.anio
 GO 
 
 -- ============================================================================
@@ -812,14 +776,10 @@ FROM (
             ORDER BY SUM(df.importe) DESC
         ) AS rn
     FROM BI_LOS_SELECTOS.BI_dim_detalle_factura df
-    JOIN BI_LOS_SELECTOS.BI_dim_curso cu
-        ON cu.curso_id = df.curso_id
-    JOIN BI_LOS_SELECTOS.BI_dim_categoria cat
-        ON cat.categoria_id = cu.categoria_id
-    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-        ON t.tiempo_id = df.tiempo_id
-    GROUP BY
-        t.anio, cu.sede_id, cat.categoria
+    JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = df.curso_id
+    JOIN BI_LOS_SELECTOS.BI_dim_categoria cat ON cat.categoria_id = cu.categoria_id
+    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = df.tiempo_id
+    GROUP BY t.anio, cu.sede_id, cat.categoria
 ) ranking
 WHERE ranking.rn <= 3
 GO
@@ -840,9 +800,7 @@ SELECT
         + 100
     ) / 2 AS indiceSatisfaccion
 FROM BI_LOS_SELECTOS.BI_hecho_satisfaccion h
-JOIN BI_LOS_SELECTOS.BI_dim_profesor p
-    ON p.profesor_id = h.profesor_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c
-    ON c.profesor_id = p.profesor_id
+JOIN BI_LOS_SELECTOS.BI_dim_profesor p ON p.profesor_id = h.profesor_id
+JOIN BI_LOS_SELECTOS.BI_dim_curso c ON c.profesor_id = p.profesor_id
 GROUP BY p.rango_etario_id, c.sede_id, h.anio
 GO
