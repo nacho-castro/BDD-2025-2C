@@ -496,24 +496,26 @@ BEGIN
 				c.codigo,
 				t.tiempo_id,
 				i.cantConfirm AS cantAlumnos,
-				DATEDIFF(DAY, c.fecha_inicio, c.fecha_fin) AS tiempoTotalCurso,
-				(SELECT COUNT(DISTINCT a.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_alumno a
-				INNER JOIN BI_LOS_SELECTOS.BI_dim_examen_tp e ON e.alumno_id = a.alumno_id
-				WHERE e.nota < 4		
+				DATEDIFF(DAY, c.fecha_inicio, c.fecha_fin) AS tiempoTotalCurso,				
+				(SELECT COUNT(DISTINCT e.alumno_id)
+				 FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
+				 WHERE e.curso_id = c.codigo AND e.nota < 4
 				) AS cantDesap,
-				(SELECT COUNT(*)
-				FROM BI_LOS_SELECTOS.BI_dim_alumno a
-				INNER JOIN BI_LOS_SELECTOS.BI_dim_examen_tp e 
-				ON e.alumno_id = a.alumno_id
-				GROUP BY a.alumno_id
-				HAVING MIN(e.nota) >= 4) as cantAprob
+				(SELECT COUNT(*) 
+				 FROM (
+					SELECT e.alumno_id
+					FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
+					WHERE e.curso_id = c.codigo
+					GROUP BY e.alumno_id
+					HAVING MIN(e.nota) >= 4 
+				 ) AS aprobados_temp
+				) AS cantAprob
 			FROM LOS_SELECTOS.curso c
 			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i 
 				ON (i.curso_id = c.codigo)
 			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
 				ON t.anio = YEAR(c.fecha_inicio)
 				AND t.mes = MONTH(c.fecha_inicio)
-			GROUP BY c.codigo, t.tiempo_id;
 
 			-- HECHO: NOTAS x Evaluacion FINAL
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_evaluacionFinal(final_id, cantInscriptos, cantAprobados, cantDesaprobados, cantAusentes, cantPresentes, tFinalizacionPromedio)
