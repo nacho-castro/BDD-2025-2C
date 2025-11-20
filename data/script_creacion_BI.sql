@@ -690,7 +690,7 @@ GROUP BY
 GO
 
 -- ============================================================================
--- VIEW 4
+-- VIEW 4 -- VER
 /* Tiempo promedio entre el inicio del curso y la aprobación del final según la categoría de los cursos, por año. 
 (Tener en cuenta el año de inicio del curso) */
 -- ============================================================================
@@ -708,20 +708,37 @@ JOIN BI_LOS_SELECTOS.BI_dim_curso c
 GROUP BY YEAR(c.fechaInicio), c.categoria_id
 GO
 
---5 nota promedio x rango etario y categoria
+-- ============================================================================
+-- VIEW 5
+/* Promedio de nota de finales según el rango etario del alumno y la categoría del curso por semestre. */
+-- ============================================================================
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_promedioNotaFinales
+AS
 SELECT
 	c.categoria_id,
 	a.rango_etario_id,
-    AVG(nf.nota)
-FROM BI_LOS_SELECTOS.BI_dim_final f 
-JOIN BI_LOS_SELECTOS.BI_dim_nota_final nf 
+    AVG(CAST(nf.nota AS DECIMAL(10,2))) AS nota,
+	t.anio,
+	((t.mes - 1) / 6) + 1 AS semestre
+FROM BI_LOS_SELECTOS.BI_dim_nota_final nf 
+JOIN BI_LOS_SELECTOS.BI_dim_final f 
     ON f.final_id = nf.final_id
 JOIN BI_LOS_SELECTOS.BI_dim_alumno a 
     ON a.alumno_id = nf.alumno_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON f.curso_id = c.curso_id
-GROUP BY c.categoria_id, a.rango_etario_id
-ORDER BY c.categoria_id, a.rango_etario_id
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
+    ON t.tiempo_id = f.tiempo_id
+GROUP BY c.categoria_id, a.rango_etario_id,t.anio, ((t.mes - 1) / 6) + 1;
+GO
+
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_promedioNotaFinales -- VER si dejamos null en promedio nota, no hay semestre 1
+-- tiene sentido que no haya semestres 1 ya que todos los meses de la consulta van del 7 al 12
+SELECT DISTINCT t.mes, t.anio
+FROM BI_LOS_SELECTOS.BI_dim_final f
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
+    ON t.tiempo_id = f.tiempo_id
+ORDER BY t.anio, t.mes;
 
 --6 tasa ausentismo finales x sede
 SELECT
