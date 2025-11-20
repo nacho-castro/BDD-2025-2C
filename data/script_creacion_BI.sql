@@ -739,18 +739,29 @@ FROM BI_LOS_SELECTOS.BI_dim_final f
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
     ON t.tiempo_id = f.tiempo_id
 ORDER BY t.anio, t.mes;
+GO
 
---6 tasa ausentismo finales x sede
+-- ============================================================================
+-- VIEW 6
+/* Porcentaje de ausentes a finales (sobre la cantidad de inscriptos) por semestre por sede. */
+-- ============================================================================
+
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_tasaAusentismo
+AS
 SELECT
     c.sede_id,
-    CAST(SUM(ef.cantAusentes) AS FLOAT) / NULLIF(SUM(ef.cantInscriptos), 0) AS tasaAusentismo
+	t.anio,
+	((t.mes - 1) / 6) + 1 AS semestre,
+    CAST(SUM(ef.cantAusentes) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(ef.cantInscriptos), 0) AS tasaAusentismo
 FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef 
 JOIN BI_LOS_SELECTOS.BI_dim_final f
     ON ef.final_id = f.final_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON f.curso_id = c.curso_id
-GROUP BY c.sede_id
-ORDER BY c.sede_id;
+JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
+    ON t.tiempo_id = f.tiempo_id
+GROUP BY c.sede_id,t.anio, ((t.mes - 1) / 6) + 1
+GO
 
 --7 % desvio de pagos x anio
 SELECT
