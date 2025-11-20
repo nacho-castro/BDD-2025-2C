@@ -781,7 +781,12 @@ JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
 GROUP BY t.anio, t.semestre
 GO
 
---8
+-- ============================================================================
+-- VIEW 8
+/* Se calcula teniendo en cuenta el total de importes adeudados sobre facturación esperada en el mes. 
+El monto adeudado se obtiene a partir de las facturas que no tengan pago registrado en dicho mes. */
+-- ============================================================================
+
 SELECT
     t.mes,
     t.anio,
