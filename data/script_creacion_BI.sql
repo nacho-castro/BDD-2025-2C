@@ -687,23 +687,6 @@ JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
 GROUP BY c.categoria_id, a.rango_etario_id,t.anio, t.semestre;
 GO
 
-
--- BORRARRRRRRRRRRR ============================================================================
-
-SELECT * FROM BI_LOS_SELECTOS.BI_dim_nota_final
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_promedioNotaFinales -- VER si dejamos null en promedio nota, no hay semestre 1
--- tiene sentido que no haya semestres 1 ya que todos los meses de la consulta van del 7 al 12
-SELECT DISTINCT t.mes, t.anio
-FROM BI_LOS_SELECTOS.BI_dim_final f
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t 
-    ON t.tiempo_id = f.tiempo_id
-ORDER BY t.anio, t.mes;
-GO
--- BORRARRRRRRRRRRR ============================================================================
-
-
-
-
 -- ============================================================================
 -- VIEW 6
 /* Porcentaje de ausentes a finales (sobre la cantidad de inscriptos) por semestre por sede. */
