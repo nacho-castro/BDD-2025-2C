@@ -833,14 +833,19 @@ FROM (
 WHERE ranking.rn <= 3
 GO
 
---10
+-- ============================================================================
+-- VIEW 10
+/* Índice de satisfacción anual, según rango etario de los profesores y sede. */
+-- ============================================================================
+
+CREATE OR ALTER VIEW BI_LOS_SELECTOS.BI_vista_indiceSatisfaccion
+AS
 SELECT
-    h.profesor_id,
+    p.rango_etario_id,
     c.sede_id,
     h.anio,
-    (
-        (CAST(SUM(h.cantSatisf) AS FLOAT) / NULLIF(SUM(h.cantEncuestas), 0)) * 100
-        - (CAST(SUM(h.cantInsatisf) AS FLOAT) / NULLIF(SUM(h.cantEncuestas), 0)) * 100
+    ((CAST(SUM(h.cantSatisf) AS DECIMAL(10,4)) / NULLIF(SUM(h.cantEncuestas), 0)) * 100
+        - (CAST(SUM(h.cantInsatisf) AS DECIMAL(10,4)) / NULLIF(SUM(h.cantEncuestas), 0)) * 100
         + 100
     ) / 2 AS indiceSatisfaccion
 FROM BI_LOS_SELECTOS.BI_hecho_satisfaccion h
@@ -848,5 +853,5 @@ JOIN BI_LOS_SELECTOS.BI_dim_profesor p
     ON p.profesor_id = h.profesor_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c
     ON c.profesor_id = p.profesor_id
-GROUP BY h.profesor_id, c.sede_id, h.anio
-ORDER BY h.anio, c.sede_id, h.profesor_id;
+GROUP BY p.rango_etario_id, c.sede_id, h.anio
+GO
