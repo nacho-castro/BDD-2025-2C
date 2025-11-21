@@ -1,6 +1,6 @@
 -- CREACION de ESQUEMA PARA EL MODELO DE BI
-CREATE SCHEMA BI_LOS_SELECTOS; -- creacion del esquema
-GO
+-- CREATE SCHEMA BI_LOS_SELECTOS; -- creacion del esquema
+-- GO
 
 -- ============================================================================
 -- CREACION DE TABLAS DE DIMENSIONES
@@ -456,10 +456,6 @@ BEGIN
 			FROM LOS_SELECTOS.trabajoPractico e
 			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
 				ON t.anio = YEAR(e.fechaEvaluacion) AND t.mes = MONTH(e.fechaEvaluacion);
-
-
-
-
 		COMMIT;
 	END TRY
 
@@ -492,26 +488,30 @@ BEGIN
 			-- HECHO: CURSADA
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_cursada(curso_id, tiempo_id, cantAlumnos, tiempoTotalCurso, cantDesap, cantAprob)
 			SELECT 
-				c.codigo,
+				c.curso_id,
 				t.tiempo_id,
-				i.cantConfirm AS cantAlumnos,
-				DATEDIFF(DAY, c.fecha_inicio, c.fecha_fin) AS tiempoTotalCurso,				
+				CASE 
+					WHEN ISNULL(i.cantConfirm, 0) > (SELECT COUNT(DISTINCT e.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_examen_tp e WHERE e.curso_id = C.curso_id)
+					THEN i.cantConfirm
+					ELSE (SELECT COUNT(DISTINCT e.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_examen_tp e WHERE e.curso_id = c.curso_id)
+				END AS cantAlumnos,
+				DATEDIFF(DAY, c.fechaInicio, c.fechaFin) AS tiempoTotalCurso,				
 				(SELECT COUNT(DISTINCT e.alumno_id)
 				 FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
-				 WHERE e.curso_id = c.codigo AND e.nota < 4
+				 WHERE e.curso_id = c.curso_id AND e.nota < 4
 				) AS cantDesap,
 				(SELECT COUNT(*) 
 				 FROM (
 					SELECT e.alumno_id
 					FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
-					WHERE e.curso_id = c.codigo
+					WHERE e.curso_id = c.curso_id
 					GROUP BY e.alumno_id
 					HAVING MIN(e.nota) >= 4 
 				 ) AS aprobados_temp
 				) AS cantAprob
-			FROM LOS_SELECTOS.curso c
-			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i ON (i.curso_id = c.codigo)
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.anio = YEAR(c.fecha_inicio) AND t.mes = MONTH(c.fecha_inicio);
+			FROM BI_LOS_SELECTOS.BI_dim_curso c
+			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i ON (i.curso_id = c.curso_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.anio = YEAR(c.fechaInicio) AND t.mes = MONTH(c.fechaInicio);
 
 			-- HECHO: NOTAS x Evaluacion FINAL
 			INSERT INTO BI_LOS_SELECTOS.BI_hecho_evaluacionFinal(final_id, cantInscriptos, cantAprobados, cantDesaprobados, cantAusentes, cantPresentes, tFinalizacionPromedio)
@@ -803,15 +803,3 @@ JOIN BI_LOS_SELECTOS.BI_dim_profesor p ON p.profesor_id = h.profesor_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON c.profesor_id = p.profesor_id
 GROUP BY p.rango_etario_id, c.sede_id, h.anio;
 GO
-
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_turnos
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_categorias
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_desempenioCursada --ver
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_tiempoPromedioFinalizacionCurso --VER
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_promedioNotaFinales
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_tasaAusentismo --ver
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_desvioPagos --ver
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_tasaMorosidad -- ver
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_ingresosDeCursos -- ver
-SELECT * FROM BI_LOS_SELECTOS.BI_vista_indiceSatisfaccion -- ver
