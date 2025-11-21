@@ -747,7 +747,8 @@ AS
 SELECT
     t.mes,
     t.anio,
-    SUM(f.totalAdeudado) / NULLIF(SUM(f.totalEsperado), 0) AS tasaMorosidad
+    SUM(f.totalAdeudado) * 100 / NULLIF(SUM(f.totalEsperado), 0) AS tasaMorosidad
+
 FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
 GROUP BY t.mes, t.anio;
@@ -802,3 +803,15 @@ JOIN BI_LOS_SELECTOS.BI_dim_profesor p ON p.profesor_id = h.profesor_id
 JOIN BI_LOS_SELECTOS.BI_dim_curso c ON c.profesor_id = p.profesor_id
 GROUP BY p.rango_etario_id, c.sede_id, h.anio;
 GO
+
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_turnos
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_categorias
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_desempenioCursada --ver
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_tiempoPromedioFinalizacionCurso --VER
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_promedioNotaFinales
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_tasaAusentismo --ver
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_desvioPagos --ver
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_tasaMorosidad -- ver
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_ingresosDeCursos -- ver
+SELECT * FROM BI_LOS_SELECTOS.BI_vista_indiceSatisfaccion -- ver
