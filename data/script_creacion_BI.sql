@@ -34,7 +34,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_sede(
 	nombre VARCHAR(255),
 	ubicacion_id BIGINT --FK
 
-		FOREIGN KEY(ubicacion_id) REFERENCES BI_LOS_SELECTOS.BI_dim_ubicacion(ubicacion_id)
+	FOREIGN KEY(ubicacion_id) REFERENCES BI_LOS_SELECTOS.BI_dim_ubicacion(ubicacion_id)
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_rango_etario(
@@ -177,7 +177,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_examen_tp(
 
 -- Hecho: Inscripci�n
 CREATE TABLE BI_LOS_SELECTOS.BI_hecho_inscripcion(
-	inscrip_id BIGINT PRIMARY KEY IDENTITY 
+	inscrip_id BIGINT PRIMARY KEY IDENTITY,
 	curso_id BIGINT NOT NULL,
 	tiempo_id BIGINT NOT NULL,
 	cantInscriptos INT,
