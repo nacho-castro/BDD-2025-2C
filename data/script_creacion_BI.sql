@@ -155,7 +155,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_pago(
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_examen_tp(
-	examen_id BIGINT PRIMARY KEY,
+	examen_id BIGINT PRIMARY KEY IDENTITY(1,1),
 	alumno_id BIGINT, --FK
 	curso_id BIGINT, --FK
 	tiempo_id BIGINT, --FK
@@ -168,6 +168,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_examen_tp(
 
 );
 
+
 -- ============================================================================
 -- CREACION DE TABLAS DE HECHOS
 -- ============================================================================
@@ -176,7 +177,7 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_examen_tp(
 
 -- Hecho: Inscripci�n
 CREATE TABLE BI_LOS_SELECTOS.BI_hecho_inscripcion(
-	inscrip_id BIGINT PRIMARY KEY IDENTITY,
+	inscrip_id BIGINT PRIMARY KEY IDENTITY 
 	curso_id BIGINT NOT NULL,
 	tiempo_id BIGINT NOT NULL,
 	cantInscriptos INT,
@@ -443,6 +444,22 @@ BEGIN
 			FROM LOS_SELECTOS.pago p
 			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(p.fecha) AND t.mes = MONTH(p.fecha))
 			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (f.factura_id = p.nroFactura);
+
+			--examen 
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_examen_tp(alumno_id, curso_id, tiempo_id, nota, presente)
+			SELECT 
+				e.alumno_id,
+				e.curso_id,
+				t.tiempo_id,
+				e.nota,
+				1
+			FROM LOS_SELECTOS.trabajoPractico e
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
+				ON t.anio = YEAR(e.fechaEvaluacion) AND t.mes = MONTH(e.fechaEvaluacion);
+
+
+
+
 		COMMIT;
 	END TRY
 
