@@ -1,6 +1,6 @@
 -- CREACION de ESQUEMA PARA EL MODELO DE BI
--- CREATE SCHEMA BI_LOS_SELECTOS; -- creacion del esquema
--- GO
+CREATE SCHEMA BI_LOS_SELECTOS; -- creacion del esquema
+GO
 
 -- ============================================================================
 -- CREACION DE TABLAS DE DIMENSIONES
@@ -10,6 +10,23 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_tiempo(
 	anio INT, 
 	mes TINYINT,
 	semestre TINYINT
+);
+
+CREATE TABLE BI_LOS_SELECTOS.BI_dim_sede(
+	sede_id BIGINT PRIMARY KEY,
+	nombre VARCHAR(255)
+);
+
+CREATE TABLE BI_LOS_SELECTOS.BI_dim_rango_etario_profesor(
+	rango_id BIGINT PRIMARY KEY,
+	rangoMin INT,
+	rangoMax INT
+);
+
+CREATE TABLE BI_LOS_SELECTOS.BI_dim_rango_etario_alumno(
+	rango_id BIGINT PRIMARY KEY,
+	rangoMin INT,
+	rangoMax INT
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_turno(
@@ -22,79 +39,9 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_categoria(
 	categoria VARCHAR(60)
 );
 
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_ubicacion(
-	ubicacion_id BIGINT PRIMARY KEY,
-	localidad VARCHAR(80),
-	direccion VARCHAR(80),
-	provincia VARCHAR(80)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_sede(
-	sede_id BIGINT PRIMARY KEY,
-	nombre VARCHAR(255),
-	ubicacion_id BIGINT --FK
-
-	FOREIGN KEY(ubicacion_id) REFERENCES BI_LOS_SELECTOS.BI_dim_ubicacion(ubicacion_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_rango_etario(
-	rango_id BIGINT PRIMARY KEY,
-	rangoMin INT,
-	rangoMax INT
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_profesor(
-	profesor_id BIGINT PRIMARY KEY,
-	dni VARCHAR(255),
-	rango_etario_id BIGINT --FK
-
-	FOREIGN KEY(rango_etario_id) REFERENCES BI_LOS_SELECTOS.BI_dim_rango_etario(rango_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_alumno(
-	alumno_id BIGINT PRIMARY KEY,
-	legajo BIGINT, 
-	rango_etario_id BIGINT --FK
-
-	FOREIGN KEY(rango_etario_id) REFERENCES BI_LOS_SELECTOS.BI_dim_rango_etario(rango_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_curso(
-	curso_id BIGINT PRIMARY KEY,
-	sede_id BIGINT, --FK
-	categoria_id BIGINT, --FK
-	turno_id BIGINT, --FK
-	profesor_id BIGINT, --FK
-	fechaInicio DATE,
-	fechaFin DATE
-
-	FOREIGN KEY(sede_id) REFERENCES BI_LOS_SELECTOS.BI_dim_sede(sede_id),
-	FOREIGN KEY(categoria_id) REFERENCES BI_LOS_SELECTOS.BI_dim_categoria(categoria_id),
-	FOREIGN KEY(turno_id) REFERENCES BI_LOS_SELECTOS.BI_dim_turno(turno_id),
-	FOREIGN KEY(profesor_id) REFERENCES BI_LOS_SELECTOS.BI_dim_profesor(profesor_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_final(
-	final_id BIGINT PRIMARY KEY,
-	curso_id BIGINT NOT NULL, --FK
-	tiempo_id BIGINT NOT NULL, --FK
-
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_nota_final(
-	nota_final_id BIGINT PRIMARY KEY,
-	final_id BIGINT, --FK
-	alumno_id BIGINT NOT NULL, --FK
-	profesor_id BIGINT NOT NULL, --FK
-	nota TINYINT,
-	presente BIT,
-	tiempoFinalizacion INT
-
-	FOREIGN KEY(final_id) REFERENCES BI_LOS_SELECTOS.BI_dim_final(final_id),
-	FOREIGN KEY(alumno_id) REFERENCES BI_LOS_SELECTOS.BI_dim_alumno(alumno_id),
-	FOREIGN KEY(profesor_id) REFERENCES BI_LOS_SELECTOS.BI_dim_profesor(profesor_id),
+CREATE TABLE BI_LOS_SELECTOS.BI_dim_medio_pago(
+	medio_id BIGINT PRIMARY KEY,
+	descripcion VARCHAR(80)
 );
 
 CREATE TABLE BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(
@@ -104,147 +51,97 @@ CREATE TABLE BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(
 	notaMax INT
 );
 
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_encuesta(
-	encuesta_id BIGINT PRIMARY KEY,
-	curso_id BIGINT NOT NULL,
-	bloque_id BIGINT NOT NULL,
-	fecha_realizada DATE
-
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(bloque_id) REFERENCES BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(bloque_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_medio_pago(
-	medio_id BIGINT PRIMARY KEY,
-	descripcion VARCHAR(80), 
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_factura(
-	factura_id BIGINT PRIMARY KEY,
-	alumno_id BIGINT, --FK
-	fechaEmision DATE,
-	fechaVto DATE,
-	importeTotal DECIMAL(18,2)
-
-	FOREIGN KEY(alumno_id) REFERENCES BI_LOS_SELECTOS.BI_dim_alumno(alumno_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_detalle_factura(
-	detalle_id BIGINT PRIMARY KEY,
-	factura_id BIGINT, --FK
-	curso_id BIGINT, --FK
-	importe DECIMAL(18,2),
-	tiempo_id BIGINT --FK
-
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(factura_id) REFERENCES BI_LOS_SELECTOS.BI_dim_factura(factura_id),
-	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_pago(
-	pago_id BIGINT PRIMARY KEY,
-	factura_id BIGINT, --FK
-	tiempo_id BIGINT, --FK
-	medio_id BIGINT, --FK
-	desviado BIT,
-	importe DECIMAL(18,2)
-
-	FOREIGN KEY(medio_id) REFERENCES BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id),
-	FOREIGN KEY(factura_id) REFERENCES BI_LOS_SELECTOS.BI_dim_factura(factura_id),
-	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
-);
-
-CREATE TABLE BI_LOS_SELECTOS.BI_dim_examen_tp(
-	examen_id BIGINT PRIMARY KEY IDENTITY(1,1),
-	alumno_id BIGINT, --FK
-	curso_id BIGINT, --FK
-	tiempo_id BIGINT, --FK
-	nota TINYINT,
-	presente BIT
-
-	FOREIGN KEY(alumno_id) REFERENCES BI_LOS_SELECTOS.BI_dim_alumno(alumno_id),
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
-
-);
-
-
 -- ============================================================================
 -- CREACION DE TABLAS DE HECHOS
 -- ============================================================================
 
 --Total: 5 HECHOS
-
--- Hecho: Inscripci�n
+-- Hecho: Inscripcion
 CREATE TABLE BI_LOS_SELECTOS.BI_hecho_inscripcion(
 	inscrip_id BIGINT PRIMARY KEY IDENTITY,
-	curso_id BIGINT NOT NULL,
-	tiempo_id BIGINT NOT NULL,
+	turno_id BIGINT, --dim FK
+	categoria_id BIGINT, --dim FK
+	sede_id BIGINT, --dim FK
+	tiempo_id BIGINT NOT NULL, --dim FK
+
 	cantInscriptos INT,
 	cantRechaz INT,
 	cantConfirm INT,
 
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
+	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id),
+	FOREIGN KEY(turno_id) REFERENCES BI_LOS_SELECTOS.BI_dim_turno(turno_id),
+	FOREIGN KEY(sede_id) REFERENCES BI_LOS_SELECTOS.BI_dim_sede(sede_id),
+	FOREIGN KEY(categoria_id) REFERENCES BI_LOS_SELECTOS.BI_dim_categoria(categoria_id),
 );
 
--- Hecho: Cursada (alumnos en cursos)
-CREATE TABLE BI_LOS_SELECTOS.BI_hecho_cursada(
-	cursada_id BIGINT PRIMARY KEY IDENTITY,
-	curso_id BIGINT NOT NULL, --FK
-	tiempo_id BIGINT NOT NULL, --FK
-	cantAlumnos INT,
-	tiempoTotalCurso INT, --FechaFin - FechaInicio
-	cantDesap INT,
-	cantAprob INT,
+CREATE TABLE BI_LOS_SELECTOS.BI_hecho_pago(
+	pago_id BIGINT PRIMARY KEY IDENTITY,
+	tiempo_id BIGINT, --FK dim
+	categoria_id BIGINT, --dim FK
+	sede_id BIGINT, --dim FK
+	medio_id BIGINT, --FK dim
 
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id)
+	cantPagos INT,
+	cantDesviados INT,
+	totalPagado DECIMAL(18,2),
+
+	FOREIGN KEY(medio_id) REFERENCES BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id),
+	FOREIGN KEY(categoria_id) REFERENCES BI_LOS_SELECTOS.BI_dim_categoria(categoria_id),
+	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id),
+	FOREIGN KEY(sede_id) REFERENCES BI_LOS_SELECTOS.BI_dim_sede(sede_id)
 );
 
--- Hecho: Evaluacion Final
-CREATE TABLE BI_LOS_SELECTOS.BI_hecho_evaluacionFinal(
-	evaluacionFinal_id BIGINT PRIMARY KEY IDENTITY,
-	final_id BIGINT, --FK
-	tFinalizacionPromedio DECIMAL(8,2), --FechaFinal - FechaInicioCurso
+CREATE TABLE BI_LOS_SELECTOS.BI_hecho_encuesta(
+	encuesta_id BIGINT PRIMARY KEY IDENTITY,
+	tiempo_id BIGINT NOT NULL, --FK dim
+	sede_id BIGINT NOT NULL, --FK dim
+	rango_id BIGINT NOT NULL, --FK dim
+	bloque_id BIGINT NOT NULL, --FK dim
+	
+	cantEncuestas INT,
+
+	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id),
+	FOREIGN KEY(sede_id) REFERENCES BI_LOS_SELECTOS.BI_dim_sede(sede_id),
+	FOREIGN KEY(rango_id) REFERENCES BI_LOS_SELECTOS.BI_dim_rango_etario_profesor(rango_id),
+	FOREIGN KEY(bloque_id) REFERENCES BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(bloque_id)
+);
+
+CREATE TABLE BI_LOS_SELECTOS.BI_hecho_final(
+	final_id BIGINT PRIMARY KEY IDENTITY,
+	tiempo_id BIGINT NOT NULL, --FK dim
+	sede_id BIGINT NOT NULL, --FK dim
+	categoria_id BIGINT, --dim FK
+	rango_id BIGINT NOT NULL, --FK dim
+
 	cantInscriptos INT,
 	cantAprobados INT,
 	cantDesaprobados INT,
 	cantAusentes INT,
-	cantPresentes INT
+	cantPresentes INT,
+	promedioNotas DECIMAL(8,2),
 
-	FOREIGN KEY(final_id) REFERENCES BI_LOS_SELECTOS.BI_dim_final(final_id)
+	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id),
+	FOREIGN KEY(sede_id) REFERENCES BI_LOS_SELECTOS.BI_dim_sede(sede_id),
+	FOREIGN KEY(categoria_id) REFERENCES BI_LOS_SELECTOS.BI_dim_categoria(categoria_id),
+	FOREIGN KEY(rango_id) REFERENCES BI_LOS_SELECTOS.BI_dim_rango_etario_alumno(rango_id)
 );
 
--- Hecho: Facturacion X Curso
-CREATE TABLE BI_LOS_SELECTOS.BI_hecho_facturacionCurso(
-	facturacionCurso_id BIGINT PRIMARY KEY IDENTITY,
-	curso_id BIGINT NOT NULL, --FK
-	tiempo_id BIGINT NOT NULL, --FK
+CREATE TABLE BI_LOS_SELECTOS.BI_hecho_curso(
+	curso_id BIGINT PRIMARY KEY IDENTITY,
+	tiempo_id BIGINT NOT NULL, --FK dim
+	sede_id BIGINT NOT NULL, --FK dim
+	categoria_id BIGINT, --dim FK
+
+	cantAlumnos INT,
+	cantAprobados INT,
+	cantDesaprobados INT,
 	totalAdeudado DECIMAL(18,2),
 	totalEsperado DECIMAL(18,2),
 	totalFacturado DECIMAL(18,2),
-	cantFacturasPagadas INT,
-	cantFacturasImpagas INT,
-	cantPagosDesviados INT,
-	medioIdMasComun BIGINT --FK
 
 	FOREIGN KEY(tiempo_id) REFERENCES BI_LOS_SELECTOS.BI_dim_tiempo(tiempo_id),
-	FOREIGN KEY(curso_id) REFERENCES BI_LOS_SELECTOS.BI_dim_curso(curso_id),
-	FOREIGN KEY(medioIdMasComun) REFERENCES BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id)
-);
-
--- Hecho: Encuesta de satisfacci�n
-CREATE TABLE BI_LOS_SELECTOS.BI_hecho_satisfaccion(
-	satisfaccion_id BIGINT PRIMARY KEY IDENTITY,
-	profesor_id BIGINT NOT NULL, --FK
-	anio INT,
-	cantEncuestas INT,
-	cantSatisf INT,
-	cantInsatisf INT,
-	cantNeutral INT
-
-	FOREIGN KEY(profesor_id) REFERENCES BI_LOS_SELECTOS.BI_dim_profesor(profesor_id)
+	FOREIGN KEY(sede_id) REFERENCES BI_LOS_SELECTOS.BI_dim_sede(sede_id),
+	FOREIGN KEY(categoria_id) REFERENCES BI_LOS_SELECTOS.BI_dim_categoria(categoria_id)
 );
 
 -- ============================================================================
@@ -258,7 +155,7 @@ BEGIN
     DECLARE @edad INT;
     SET @edad = DATEDIFF(YEAR, @fechaNacimiento, GETDATE());
 
-    -- Ajuste por si no cumpli� a�os este a�o
+    -- Ajuste por si no cumplio anios este anio
     IF (DATEADD(YEAR, @edad, @fechaNacimiento) > GETDATE())
         SET @edad = @edad - 1;
 
@@ -272,7 +169,7 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRAN
 			--tiempo
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_tiempo (anio, mes, semestre)
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_tiempo(anio, mes, semestre)
 			SELECT DISTINCT
 				YEAR(fecha) AS anio,
 				MONTH(fecha) AS mes,
@@ -292,7 +189,26 @@ BEGIN
 			) AS fechas
 			ORDER BY anio, mes;
 
-			--turnos
+			--sede
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_sede(sede_id, nombre)
+			SELECT s.sede_id, s.nombre FROM LOS_SELECTOS.sede s;
+
+			--rango etario prof
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_rango_etario_profesor(rango_id, rangoMin, rangoMax)
+			VALUES 
+				(1, 25, 35),     -- 25-35
+				(2, 35, 50),     -- 35-50
+				(3, 50, NULL);   -- >50
+
+			--rango etario alumn
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_rango_etario_alumno(rango_id, rangoMin, rangoMax)
+			VALUES 
+				(1, 0, 25),		 -- <25
+				(2, 25, 35),     -- 25-35
+				(3, 35, 50),     -- 35-50
+				(4, 50, NULL);   -- >50
+
+			--turno
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_turno(turno_id, turno)
 			SELECT t.turno_id, t.nombre FROM LOS_SELECTOS.turno t;
 
@@ -300,80 +216,9 @@ BEGIN
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_categoria(categoria_id, categoria)
 			SELECT c.categoria_id, c.nombre FROM LOS_SELECTOS.categoria c;
 
-			--sede
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_sede(sede_id, nombre)
-			SELECT s.sede_id, s.nombre FROM LOS_SELECTOS.sede s;
-
-			--rango etario
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_rango_etario (rango_id, rangoMin, rangoMax)
-			VALUES 
-				(1, 0, 25),		 -- <25
-				(2, 25, 35),     -- 25-35
-				(3, 35, 50),     -- 35-50
-				(4, 50, NULL);   -- >50
-
-			--profesor
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_profesor (profesor_id, dni, rango_etario_id)
-			SELECT 
-				p.profesor_id,
-				p.dni,
-				(CASE 
-					WHEN BI_LOS_SELECTOS.fn_CalcularEdad(p.fecha_nacimiento) < 25 THEN 1
-					WHEN BI_LOS_SELECTOS.fn_CalcularEdad(p.fecha_nacimiento) < 35 THEN 2
-					WHEN BI_LOS_SELECTOS.fn_CalcularEdad(p.fecha_nacimiento) < 50 THEN 3
-					ELSE 4
-				END) AS rango_etario_id
-			FROM LOS_SELECTOS.profesor p;
-
-			--alumno
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_alumno(alumno_id, legajo, rango_etario_id)
-			SELECT 
-				a.alumno_id,
-				a.legajo,
-				(CASE 
-					WHEN BI_LOS_SELECTOS.fn_CalcularEdad(a.fecha_nacimiento) < 25 THEN 1
-					WHEN BI_LOS_SELECTOS.fn_CalcularEdad(a.fecha_nacimiento) < 35 THEN 2
-					WHEN BI_LOS_SELECTOS.fn_CalcularEdad(a.fecha_nacimiento) < 50 THEN 3
-					ELSE 4
-				END) AS rango_etario_id
-			FROM LOS_SELECTOS.alumno a;
-
-			--curso
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_curso(curso_id, sede_id, categoria_id, turno_id, profesor_id, fechaInicio, fechaFin)
-			SELECT 
-				c.codigo,
-				c.sede_id,
-				c.categoria_id,
-				c.turno_id,
-				c.profesor_id,
-				c.fecha_inicio,
-				c.fecha_fin
-			FROM LOS_SELECTOS.curso c;
-
-			--notas de los finales
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_final(final_id, curso_id, tiempo_id)
-			SELECT DISTINCT
-				exf.final_id,
-				exf.curso_id,
-				t.tiempo_id
-			FROM LOS_SELECTOS.examenFinal exf
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
-
-			--notas de los finales
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_nota_final(nota_final_id, final_id, alumno_id, profesor_id, nota, presente, tiempoFinalizacion)
-			SELECT 
-				ev.nro_inscripcion,
-				i.examenFinal_id,
-				i.alumno_id,
-				ev.profesor_id,
-				ev.nota,
-				ev.presente,
-				DATEDIFF(DAY, c.fecha_inicio, exf.fecha_hora) AS tiempoFinalizacion
-			FROM LOS_SELECTOS.evaluacionFinal ev
-			JOIN LOS_SELECTOS.inscripcionFinal i ON (ev.nro_inscripcion = i.nro_inscripcion)
-			JOIN LOS_SELECTOS.examenFinal exf ON (i.examenFinal_id = exf.final_id) --conocer fecha final
-			JOIN LOS_SELECTOS.curso c ON (c.codigo = exf.curso_id) --conocer fecha inicio
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(exf.fecha_hora) AND t.mes = MONTH(exf.fecha_hora));
+			--medio pago
+			INSERT INTO BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id, descripcion)
+			SELECT m.medio_id, m.descripcion FROM LOS_SELECTOS.medioDePago m;
 
 			--satisfaccion
 			INSERT INTO BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion(bloque_id, nombre, notaMin, notaMax)
@@ -381,81 +226,6 @@ BEGIN
 				(1, 'Insatisfecho', 1, 4),
 				(2, 'Neutral', 5, 6),
 				(3, 'Satisfecho', 7, 10);
-			
-			--encuestas
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_encuesta(encuesta_id, curso_id, bloque_id,fecha_realizada)
-			SELECT
-				e.encuesta_id,
-				e.curso_id,
-				s.bloque_id,
-				GETDATE()
-			FROM LOS_SELECTOS.encuesta e
-			JOIN LOS_SELECTOS.detalleEncuesta d ON (d.encuesta_id = e.encuesta_id)
-			JOIN (
-				-- Obtener el promedio por encuesta
-				SELECT 
-					d.encuesta_id,
-					AVG(p.nota) AS promedio
-				FROM LOS_SELECTOS.detalleEncuesta d
-				JOIN LOS_SELECTOS.pregunta p ON (p.pregunta_id = d.pregunta_id)
-				GROUP BY d.encuesta_id
-			) prom ON (prom.encuesta_id = e.encuesta_id)
-			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion s ON (prom.promedio BETWEEN s.notaMin AND s.notaMax)
-			GROUP BY e.encuesta_id, e.curso_id, s.bloque_id;
-
-			--medio pago
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_medio_pago(medio_id, descripcion)
-			SELECT m.medio_id, m.descripcion FROM LOS_SELECTOS.medioDePago m;
-
-			--factura
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_factura(factura_id, alumno_id, fechaEmision, fechaVto, importeTotal)
-			SELECT 
-				f.nroFactura, 
-				f.alumno_id,
-				f.fechaEmision,
-				f.fechaVencimiento,
-				f.importeTotal
-			FROM LOS_SELECTOS.factura f
-			JOIN LOS_SELECTOS.detalleFactura d ON (d.nroFactura = f.nroFactura);
-
-			--detalle
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_detalle_factura(detalle_id, curso_id, factura_id, importe, tiempo_id)
-			SELECT 
-				d.id, 
-				d.curso_id,
-				d.nroFactura,
-				d.importe,
-				t.tiempo_id
-			FROM LOS_SELECTOS.detalleFactura d
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = d.periodo_anio AND t.mes = d.periodo_mes);
-			
-			--pago
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_pago(pago_id, medio_id, tiempo_id, factura_id, importe, desviado)
-			SELECT 
-				p.pago_id, 
-				p.medio_id,
-				t.tiempo_id,
-				p.nroFactura,
-				p.importe,
-				CASE 
-					WHEN p.fecha > f.fechaVto THEN 1  -- pago desviado
-					ELSE 0                            -- pago normal
-				END AS desviado
-			FROM LOS_SELECTOS.pago p
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(p.fecha) AND t.mes = MONTH(p.fecha))
-			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (f.factura_id = p.nroFactura);
-
-			--examen 
-			INSERT INTO BI_LOS_SELECTOS.BI_dim_examen_tp(alumno_id, curso_id, tiempo_id, nota, presente)
-			SELECT 
-				e.alumno_id,
-				e.curso_id,
-				t.tiempo_id,
-				e.nota,
-				1
-			FROM LOS_SELECTOS.trabajoPractico e
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t
-				ON t.anio = YEAR(e.fechaEvaluacion) AND t.mes = MONTH(e.fechaEvaluacion);
 		COMMIT;
 	END TRY
 
@@ -465,96 +235,177 @@ BEGIN
 	END CATCH
 END;
 
+
 GO
 CREATE PROCEDURE BI_LOS_SELECTOS.migracion_etl_hechos
 AS
 BEGIN
 	BEGIN TRY
 		BEGIN TRAN
-			-- HECHO: INSCRIPCIONES x CURSO-FECHA
-			INSERT INTO BI_LOS_SELECTOS.BI_hecho_inscripcion(curso_id, tiempo_id, cantInscriptos, cantRechaz, cantConfirm)
+			-- HECHO INSCRIPCION
+			INSERT INTO BI_LOS_SELECTOS.BI_hecho_inscripcion(turno_id, categoria_id, sede_id, tiempo_id, cantInscriptos, cantRechaz, cantConfirm)
 			SELECT 
-				i.curso_id,
+				tr.turno_id,
+				c.categoria_id,
+				s.sede_id,
 				t.tiempo_id,
 				COUNT(DISTINCT i.nro_inscripcion) AS cantInscriptos,
-				SUM(CASE WHEN e.descripcion = 'Rechazada' THEN 1 END) AS cantRechaz,
-				SUM(CASE WHEN e.descripcion = 'Confirmada' THEN 1 END) AS cantConfirm
+				COALESCE(SUM(CASE WHEN e.descripcion = 'Rechazada'  THEN 1 ELSE 0 END), 0) AS cantRechaz,
+				COALESCE(SUM(CASE WHEN e.descripcion = 'Confirmada' THEN 1 ELSE 0 END), 0) AS cantConfirm
 			FROM LOS_SELECTOS.inscripcion i
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(i.fecha) AND t.mes = MONTH(i.fecha))
+			JOIN LOS_SELECTOS.curso curso ON (i.curso_id = curso.codigo)
 			JOIN LOS_SELECTOS.estadoXinscripcion ei ON (ei.inscripcion_id = i.nro_inscripcion)
 			JOIN LOS_SELECTOS.estado e ON (e.estado_id = ei.estado_id)
-			GROUP BY i.curso_id, t.tiempo_id;
+			--join dimensiones
+			JOIN BI_LOS_SELECTOS.BI_dim_turno tr ON (tr.turno_id = curso.turno_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON (c.categoria_id = curso.categoria_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_sede s ON (s.sede_id = curso.sede_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(i.fecha) AND t.mes = MONTH(i.fecha))
+			GROUP BY tr.turno_id, c.categoria_id, s.sede_id, t.tiempo_id;
 
-			-- HECHO: CURSADA
-			INSERT INTO BI_LOS_SELECTOS.BI_hecho_cursada(curso_id, tiempo_id, cantAlumnos, tiempoTotalCurso, cantDesap, cantAprob)
+			--HECHO:PAGO
+			INSERT INTO BI_LOS_SELECTOS.BI_hecho_pago(tiempo_id, sede_id, categoria_id, medio_id, cantPagos, cantDesviados, totalPagado)
 			SELECT 
-				c.curso_id,
 				t.tiempo_id,
-				CASE 
-					WHEN ISNULL(i.cantConfirm, 0) > (SELECT COUNT(DISTINCT e.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_examen_tp e WHERE e.curso_id = C.curso_id)
-					THEN i.cantConfirm
-					ELSE (SELECT COUNT(DISTINCT e.alumno_id) FROM BI_LOS_SELECTOS.BI_dim_examen_tp e WHERE e.curso_id = c.curso_id)
-				END AS cantAlumnos,
-				DATEDIFF(DAY, c.fechaInicio, c.fechaFin) AS tiempoTotalCurso,				
-				(SELECT COUNT(DISTINCT e.alumno_id)
-				 FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
-				 WHERE e.curso_id = c.curso_id AND e.nota < 4
-				) AS cantDesap,
-				(SELECT COUNT(*) 
-				 FROM (
-					SELECT e.alumno_id
-					FROM BI_LOS_SELECTOS.BI_dim_examen_tp e
-					WHERE e.curso_id = c.curso_id
-					GROUP BY e.alumno_id
-					HAVING MIN(e.nota) >= 4 
-				 ) AS aprobados_temp
-				) AS cantAprob
-			FROM BI_LOS_SELECTOS.BI_dim_curso c
-			JOIN BI_LOS_SELECTOS.BI_hecho_inscripcion i ON (i.curso_id = c.curso_id)
-			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.anio = YEAR(c.fechaInicio) AND t.mes = MONTH(c.fechaInicio);
+				s.sede_id,
+				c.categoria_id,
+				m.medio_id,
+				COUNT(DISTINCT p.pago_id) AS cantPagos,
+				COALESCE(SUM(CASE WHEN p.fecha > f.fechaVencimiento THEN 1 ELSE 0 END), 0) AS cantDesviados,
+				SUM(p.importe) AS totalPagado
+			FROM LOS_SELECTOS.pago p
+			JOIN LOS_SELECTOS.factura f ON (f.nroFactura = p.nroFactura)
+			JOIN LOS_SELECTOS.detalleFactura d ON (d.nroFactura = f.nroFactura)
+			JOIN LOS_SELECTOS.curso curso ON (curso.codigo = d.curso_id)
+			--join dimensiones
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(p.fecha) AND t.mes = MONTH(p.fecha))
+			JOIN BI_LOS_SELECTOS.BI_dim_sede s ON (s.sede_id = curso.sede_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON (c.categoria_id = curso.categoria_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_medio_pago m ON (m.medio_id = p.medio_id)
+			GROUP BY t.tiempo_id,s.sede_id,c.categoria_id,m.medio_id;
 
-			-- HECHO: NOTAS x Evaluacion FINAL
-			INSERT INTO BI_LOS_SELECTOS.BI_hecho_evaluacionFinal(final_id, cantInscriptos, cantAprobados, cantDesaprobados, cantAusentes, cantPresentes, tFinalizacionPromedio)
+			-- HECHO:ENCUESTA
+			INSERT INTO BI_LOS_SELECTOS.BI_hecho_encuesta(bloque_id, rango_id, sede_id, tiempo_id, cantEncuestas)
+			SELECT
+				b.bloque_id,
+				r.rango_id,
+				s.sede_id,
+				t.tiempo_id,
+				COUNT(DISTINCT e.encuesta_id) AS cantEncuestas
+			FROM LOS_SELECTOS.encuesta e 
+			JOIN LOS_SELECTOS.detalleEncuesta de ON (de.encuesta_id = e.encuesta_id)
+			JOIN LOS_SELECTOS.pregunta preg ON (preg.pregunta_id = de.pregunta_id)
+			JOIN LOS_SELECTOS.curso curso ON (curso.codigo = e.curso_id)
+			JOIN LOS_SELECTOS.profesor prof ON (prof.profesor_id = curso.profesor_id)
+			--join dimensiones
+			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion b ON (preg.nota BETWEEN b.notaMin AND b.notaMax)
+			JOIN BI_LOS_SELECTOS.BI_dim_rango_etario_profesor r 
+				ON (BI_LOS_SELECTOS.fn_CalcularEdad(prof.fecha_nacimiento) BETWEEN r.rangoMin AND COALESCE(r.rangoMax, 200))
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(e.fechaRegistro) AND t.mes = MONTH(e.fechaRegistro))
+			JOIN BI_LOS_SELECTOS.BI_dim_sede s ON (s.sede_id = curso.sede_id)
+			GROUP BY b.bloque_id, r.rango_id, s.sede_id, t.tiempo_id;
+
+			-- HECHO:FINAL
+			INSERT INTO BI_LOS_SELECTOS.BI_hecho_final(tiempo_id, sede_id, categoria_id, rango_id, cantInscriptos, cantAprobados, cantDesaprobados, cantAusentes, cantPresentes, promedioNotas)
 			SELECT 
-				f.final_id,
-				COUNT(*) AS cantInscriptos,
-				SUM(CASE WHEN f.nota >= 4 AND f.presente = 1 THEN 1 ELSE 0 END) AS cantAprobados,
-				SUM(CASE WHEN f.nota < 4 AND f.presente = 1 THEN 1 ELSE 0 END) AS cantDesaprobados,
-				SUM(CASE WHEN f.presente = 0 THEN 1 ELSE 0 END) AS cantAusentes,
-				SUM(CASE WHEN f.presente = 1 THEN 1 ELSE 0 END) AS cantPresentes,
-				AVG(CASE WHEN f.nota >= 4 AND f.presente = 1 THEN f.tiempoFinalizacion END) AS tFinalizacionPromedio --aprobados que firmaron la materia
-			FROM BI_LOS_SELECTOS.BI_dim_nota_final f
-			GROUP BY f.final_id;
+				t.tiempo_id,
+				s.sede_id,
+				c.categoria_id,
+				r.rango_id,
+				COUNT(DISTINCT insf.nro_inscripcion) AS cantInscriptos,
+				SUM(CASE WHEN evf.presente = 1 AND evf.nota >= 4 THEN 1 ELSE 0 END) AS cantAprobados,
+				SUM(CASE WHEN evf.presente = 1 AND evf.nota < 4  THEN 1 ELSE 0 END) AS cantDesaprobados,
+				SUM(CASE WHEN evf.presente = 0 THEN 1 ELSE 0 END) AS cantAusentes,
+				SUM(CASE WHEN evf.presente = 1 THEN 1 ELSE 0 END) AS cantPresentes,
+				COALESCE(SUM(evf.nota) * 1.0 / NULLIF(COUNT(CASE WHEN evf.presente = 1 THEN 1 END), 0), 0) AS promedioNotas
+			FROM LOS_SELECTOS.evaluacionFinal evf
+			JOIN LOS_SELECTOS.inscripcionFinal insf ON (insf.nro_inscripcion = evf.nro_inscripcion)
+			JOIN LOS_SELECTOS.examenFinal exf ON (exf.final_id = insf.examenFinal_id)
+			JOIN LOS_SELECTOS.curso curso ON (exf.curso_id = curso.codigo)
+			JOIN LOS_SELECTOS.alumno alu ON (alu.alumno_id = insf.alumno_id)
+			--join dimensiones
+			JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON (c.categoria_id = curso.categoria_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_sede s ON (s.sede_id = curso.sede_id)
+			JOIN BI_LOS_SELECTOS.BI_dim_rango_etario_alumno r 
+				ON (BI_LOS_SELECTOS.fn_CalcularEdad(alu.fecha_nacimiento) BETWEEN r.rangoMin AND COALESCE(r.rangoMax, 200))
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(insf.fecha_inscripto) AND t.mes = MONTH(insf.fecha_inscripto))
+			GROUP BY t.tiempo_id, s.sede_id, c.categoria_id, r.rango_id;
 
-			-- HECHO: FACTURACION x Curso-Fecha
-			INSERT INTO BI_LOS_SELECTOS.BI_hecho_facturacionCurso(curso_id, tiempo_id, totalEsperado, totalFacturado, totalAdeudado, cantPagosDesviados, cantFacturasPagadas, cantFacturasImpagas)
+			--HECHO:CURSO
+			INSERT INTO BI_LOS_SELECTOS.BI_hecho_curso(tiempo_id, sede_id, categoria_id, cantAlumnos, cantAprobados, cantDesaprobados,totalEsperado, totalFacturado, totalAdeudado)
 			SELECT
-				df.curso_id,
-				df.tiempo_id,
-				SUM(df.importe) AS totalEsperado,
-				SUM(COALESCE(p.importe, 0)) AS totalFacturado,
-				SUM(df.importe) - SUM(COALESCE(p.importe, 0)) AS totalAdeudado,
-				SUM(CASE WHEN p.desviado = 1 THEN 1 ELSE 0 END) AS cantPagosDesviados,
-				COUNT(DISTINCT CASE WHEN p.factura_id IS NOT NULL THEN f.factura_id END) AS cantFacturasPagadas,
-				COUNT(DISTINCT CASE WHEN p.factura_id IS NULL THEN f.factura_id END) AS cantFacturasImpagas
-			FROM BI_LOS_SELECTOS.BI_dim_detalle_factura df
-			JOIN BI_LOS_SELECTOS.BI_dim_factura f ON (df.factura_id = f.factura_id)
-			LEFT JOIN BI_LOS_SELECTOS.BI_dim_pago p ON (f.factura_id = p.factura_id) --LEFT: pueden no existir pagos
-			GROUP BY df.curso_id, df.tiempo_id;
+				t.tiempo_id,
+				s.sede_id,
+				c.categoria_id,
+				COALESCE(alu.cantAlumnos, 0) AS cantAlumnos,
+				COALESCE(eval.cantAprobados, 0) AS cantAprobados,
+				COALESCE(eval.cantDesaprobados, 0) AS cantDesaprobados,
+				COALESCE(fac.totalEsperado, 0) AS totalEsperado,
+				COALESCE(fac.totalFacturado, 0) AS totalFacturado,
+				COALESCE(fac.totalAdeudado, 0) AS totalAdeudado
+			FROM LOS_SELECTOS.curso curso
+			JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON c.categoria_id = curso.categoria_id
+			JOIN BI_LOS_SELECTOS.BI_dim_sede s ON s.sede_id = curso.sede_id
+			JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON (t.anio = YEAR(curso.fecha_inicio) AND t.mes = MONTH(curso.fecha_fin))
 
-			-- HECHO: SATISFACCIÓN x Profesor-Anio
-			INSERT INTO BI_LOS_SELECTOS.BI_hecho_satisfaccion(profesor_id, anio, cantEncuestas, cantInsatisf, cantNeutral, cantSatisf)
-			SELECT
-				c.profesor_id,
-				YEAR(c.fechaInicio) AS anio,
-				COUNT(*) AS cantEncuestas,
-				SUM(CASE WHEN b.nombre = 'Insatisfecho' THEN 1 ELSE 0 END) AS cantInsatisf,
-				SUM(CASE WHEN b.nombre = 'Neutral' THEN 1 ELSE 0 END) AS cantNeutral,
-				SUM(CASE WHEN b.nombre = 'Satisfecho' THEN 1 ELSE 0 END) AS cantSatisf
-			FROM BI_LOS_SELECTOS.BI_dim_encuesta e 
-			JOIN BI_LOS_SELECTOS.BI_dim_bloq_satisfaccion b ON e.bloque_id = b.bloque_id
-			JOIN BI_LOS_SELECTOS.BI_dim_curso c ON e.curso_id = c.curso_id
-			GROUP BY c.profesor_id, YEAR(c.fechaInicio);
+			-- SUBQUERY ALUMNOS POR CURSO
+			JOIN (
+				SELECT 
+					ins.curso_id,
+					SUM(CASE WHEN ei.estado_id = 1 THEN 1 ELSE 0 END) AS cantAlumnos
+				FROM LOS_SELECTOS.inscripcion ins
+				JOIN LOS_SELECTOS.estadoXinscripcion ei ON ei.inscripcion_id = ins.nro_inscripcion
+				GROUP BY ins.curso_id
+			) alu ON alu.curso_id = curso.codigo
+
+			-- SUBQUERY EVALUACIONES + TP (por alumno)
+			JOIN (
+				SELECT
+					x.curso_id,
+					SUM(CASE WHEN x.aprobado = 1 THEN 1 ELSE 0 END) AS cantAprobados,
+					SUM(CASE WHEN x.aprobado = 0 THEN 1 ELSE 0 END) AS cantDesaprobados
+				FROM (
+					SELECT 
+						alu.alumno_id,
+						ins.curso_id,
+            
+						-- Si TODAS sus evaluaciones tienen nota >= 4
+						-- Y si existe TP, debe estar aprobado
+						CASE 
+							WHEN MIN(CASE WHEN aev.nota >= 4 THEN 1 ELSE 0 END) = 1
+								AND (MAX(tp.nota) IS NULL OR MAX(CASE WHEN tp.nota >= 4 THEN 1 ELSE 0 END) = 1)
+							THEN 1 ELSE 0
+						END AS aprobado
+
+					--solo alumnos inscriptos
+					FROM LOS_SELECTOS.inscripcion ins
+					JOIN LOS_SELECTOS.estadoXinscripcion ei ON ei.inscripcion_id = ins.nro_inscripcion AND ei.estado_id = 1
+
+					JOIN LOS_SELECTOS.alumno alu ON alu.alumno_id = ins.alumno_id
+					LEFT JOIN LOS_SELECTOS.modulo m ON m.curso_id = ins.curso_id
+					LEFT JOIN LOS_SELECTOS.evaluacion ev ON ev.modulo_id = m.modulo_id
+					LEFT JOIN LOS_SELECTOS.alumnoXevaluacion aev ON aev.evaluacion_id = ev.evaluacion_id AND aev.alumno_id = alu.alumno_id
+					LEFT JOIN LOS_SELECTOS.trabajoPractico tp ON tp.curso_id = ins.curso_id AND tp.alumno_id = alu.alumno_id
+					GROUP BY alu.alumno_id, ins.curso_id
+				) x
+				GROUP BY x.curso_id
+			) eval ON eval.curso_id = curso.codigo
+
+			-- SUBQUERY FACTURACIÓN POR CURSO
+			JOIN (
+				SELECT 
+					df.curso_id,
+					SUM(df.importe) AS totalEsperado,
+					SUM(CASE WHEN p.importe IS NOT NULL THEN p.importe ELSE 0 END) AS totalFacturado,
+					SUM(CASE
+							WHEN p.nroFactura IS NULL AND f.nroFactura IS NOT NULL THEN df.importe
+							ELSE 0
+						END) AS totalAdeudado
+				FROM LOS_SELECTOS.detalleFactura df
+				LEFT JOIN LOS_SELECTOS.factura f ON f.nroFactura = df.nroFactura
+				LEFT JOIN LOS_SELECTOS.pago p ON p.nroFactura = f.nroFactura
+				GROUP BY df.curso_id
+			) fac ON fac.curso_id = curso.codigo;
 		COMMIT;
 	END TRY
 
@@ -571,235 +422,4 @@ GO
 EXECUTE BI_LOS_SELECTOS.migracion_etl_dimensiones;
 GO
 EXECUTE BI_LOS_SELECTOS.migracion_etl_hechos;
-GO
--- ============================================================================
--- VIEW 1 CATEGORIAS
--- Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.-- 
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_categorias
-AS
-SELECT 
-    anio,
-    sede,
-    categoria,
-    cantidad_inscriptos
-FROM (
-    SELECT
-        t.anio,
-        cu.sede_id as sede,
-        c.categoria,
-        SUM(h.cantInscriptos) AS cantidad_inscriptos,
-        ROW_NUMBER() OVER (
-            PARTITION BY t.anio, cu.sede_id
-            ORDER BY SUM(h.cantInscriptos) DESC
-        ) AS ranking
-    FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
-    JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
-    JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON c.categoria_id = cu.categoria_id
-    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
-    GROUP BY t.anio, cu.sede_id, c.categoria
-) subconsulta
-WHERE ranking <= 3;
-
--- ============================================================================
--- VIEW 1 TURNOS
--- Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_turnos
-AS
-SELECT 
-    anio,
-    sede,
-    turno,
-    cantidad_inscriptos
-FROM (
-    SELECT
-        t.anio,
-		cu.sede_id as sede,
-        tu.turno,
-        SUM(h.cantInscriptos) AS cantidad_inscriptos,
-        ROW_NUMBER() OVER (
-            PARTITION BY t.anio, cu.sede_id 
-            ORDER BY SUM(h.cantInscriptos) DESC
-        ) AS ranking
-    FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
-    JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
-    JOIN BI_LOS_SELECTOS.BI_dim_turno tu ON tu.turno_id = cu.turno_id
-    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
-    GROUP BY t.anio, cu.sede_id, tu.turno
-) subconsulta
-WHERE ranking <= 3;
-
--- ============================================================================
--- VIEW 2
--- Tasa de rechazo de inscripciones: Porcentaje de inscripciones rechazadas por mes por sede (sobre el total de inscripciones).
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_inscripcionesRechazadas
-AS
-SELECT
-    t.anio,
-	t.mes,
-    cu.sede_id,
-    SUM(h.cantRechaz) * 100.0 / NULLIF(SUM(h.cantInscriptos), 0) AS porcRechazadas
-FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = h.tiempo_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = h.curso_id
-GROUP BY t.anio,t.mes, cu.sede_id;
-
--- ============================================================================
--- VIEW 3
-/* Comparación de desempeño de cursada por sede: Porcentaje de aprobación de cursada por sede, por año. 
-Se considera aprobada la cursada de un alumno cuando tiene nota mayor o igual a 4 en todos los módulos y el TP. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_desempenioCursada
-AS
-SELECT 
-    t.anio,
-    c.sede_id,
-	(CAST(SUM(hc.cantAprob) AS DECIMAL(10,4)) / NULLIF(SUM(hc.cantAlumnos), 0)) * 100 AS porcCursadaAprobada
-FROM BI_LOS_SELECTOS.BI_hecho_cursada hc
-JOIN BI_LOS_SELECTOS.BI_dim_curso c ON hc.curso_id = c.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON hc.tiempo_id = t.tiempo_id
-GROUP BY t.anio, c.sede_id;
-
--- ============================================================================
--- VIEW 4
-/* Tiempo promedio entre el inicio del curso y la aprobación del final según la categoría de los cursos, por año. 
-(Tener en cuenta el año de inicio del curso) */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_tiempoPromedioFinalizacionCurso
-AS
-SELECT
-	YEAR(c.fechaInicio) as AnioInicio,
-	c.categoria_id,
-    AVG(ef.tFinalizacionPromedio) finalizacionPromedio
-FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef
-JOIN BI_LOS_SELECTOS.BI_dim_final f ON f.final_id = ef.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
-GROUP BY YEAR(c.fechaInicio), c.categoria_id;
-
--- ============================================================================
--- VIEW 5
-/* Promedio de nota de finales según el rango etario del alumno y la categoría del curso por semestre. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_promedioNotaFinales
-AS
-SELECT
-	c.categoria_id,
-	a.rango_etario_id,
-    AVG(CAST(nf.nota AS DECIMAL(10,2))) AS nota,
-	t.anio,
-	t.semestre
-FROM BI_LOS_SELECTOS.BI_dim_nota_final nf 
-JOIN BI_LOS_SELECTOS.BI_dim_final f ON f.final_id = nf.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_alumno a ON a.alumno_id = nf.alumno_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY c.categoria_id, a.rango_etario_id,t.anio, t.semestre;
-
--- ============================================================================
--- VIEW 6
-/* Porcentaje de ausentes a finales (sobre la cantidad de inscriptos) por semestre por sede. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_tasaAusentismo
-AS
-SELECT
-    c.sede_id,
-	t.anio,
-	t.semestre,
-    CAST(SUM(ef.cantAusentes) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(ef.cantInscriptos), 0) AS tasaAusentismo
-FROM BI_LOS_SELECTOS.BI_hecho_evaluacionFinal ef 
-JOIN BI_LOS_SELECTOS.BI_dim_final f ON ef.final_id = f.final_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c ON f.curso_id = c.curso_id
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY c.sede_id,t.anio, semestre;
-
--- ============================================================================
--- VIEW 7
-/* Porcentaje de pagos realizados fuera de término por semestre. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_desvioPagos
-AS
-SELECT
-    t.anio,
-	t.semestre,
-    CAST(SUM(f.cantPagosDesviados) AS DECIMAL(10,4)) * 100 / NULLIF(SUM(f.cantFacturasPagadas), 0) AS porcentajeDesvio
-FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY t.anio, t.semestre;
-
--- ============================================================================
--- VIEW 8
-/* Se calcula teniendo en cuenta el total de importes adeudados sobre facturación esperada en el mes. 
-El monto adeudado se obtiene a partir de las facturas que no tengan pago registrado en dicho mes. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_tasaMorosidad
-AS
-SELECT
-    t.mes,
-    t.anio,
-    SUM(f.totalAdeudado) * 100 / NULLIF(SUM(f.totalEsperado), 0) AS tasaMorosidad
-
-FROM BI_LOS_SELECTOS.BI_hecho_facturacionCurso f
-JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = f.tiempo_id
-GROUP BY t.mes, t.anio;
-
--- ============================================================================
--- VIEW 9
-/* Las 3 categorías de cursos que generan mayores ingresos por sede, por año. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_ingresosDeCursos
-AS
-SELECT
-    ranking.anio,
-    ranking.sede_id,
-    ranking.categoria,
-    ranking.ingresos
-FROM (
-    SELECT
-        t.anio,
-        cu.sede_id,
-        cat.categoria,
-        SUM(df.importe) AS ingresos,
-        ROW_NUMBER() OVER(
-            PARTITION BY t.anio, cu.sede_id
-            ORDER BY SUM(df.importe) DESC
-        ) AS rn
-    FROM BI_LOS_SELECTOS.BI_dim_detalle_factura df
-    JOIN BI_LOS_SELECTOS.BI_dim_curso cu ON cu.curso_id = df.curso_id
-    JOIN BI_LOS_SELECTOS.BI_dim_categoria cat ON cat.categoria_id = cu.categoria_id
-    JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON t.tiempo_id = df.tiempo_id
-    GROUP BY t.anio, cu.sede_id, cat.categoria
-) ranking
-WHERE ranking.rn <= 3;
-
--- ============================================================================
--- VIEW 10
-/* Índice de satisfacción anual, según rango etario de los profesores y sede. */
--- ============================================================================
-GO
-CREATE VIEW BI_LOS_SELECTOS.BI_vista_indiceSatisfaccion
-AS
-SELECT
-    p.rango_etario_id,
-    c.sede_id,
-    h.anio,
-    ((CAST(SUM(h.cantSatisf) AS DECIMAL(10,4)) / NULLIF(SUM(h.cantEncuestas), 0)) * 100
-        - (CAST(SUM(h.cantInsatisf) AS DECIMAL(10,4)) / NULLIF(SUM(h.cantEncuestas), 0)) * 100
-        + 100
-    ) / 2 AS indiceSatisfaccion
-FROM BI_LOS_SELECTOS.BI_hecho_satisfaccion h
-JOIN BI_LOS_SELECTOS.BI_dim_profesor p ON p.profesor_id = h.profesor_id
-JOIN BI_LOS_SELECTOS.BI_dim_curso c ON c.profesor_id = p.profesor_id
-GROUP BY p.rango_etario_id, c.sede_id, h.anio;
 GO
