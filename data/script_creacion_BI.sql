@@ -336,7 +336,7 @@ BEGIN
 			GROUP BY t.tiempo_id, s.sede_id, c.categoria_id, r.rango_id;
 
 			--HECHO:CURSO
-			INSERT INTO BI_LOS_SELECTOS.BI_hecho_curso(tiempo_id, sede_id, categoria_id, cantAlumnos, cantAprobados, cantDesaprobados,totalEsperado, totalFacturado, totalAdeudado)
+			INSERT INTO BI_LOS_SELECTOS.BI_hecho_curso(tiempo_id, sede_id, categoria_id, cantAlumnos, cantAprobados, cantDesaprobados,totalEsperado, totalFacturado, totalAdeudado,sumDiasInicioAFinal,cantCasosFinalizados)
 			SELECT
 				t.tiempo_id,
 				s.sede_id,
@@ -346,7 +346,9 @@ BEGIN
 				COALESCE(eval.cantDesaprobados, 0) AS cantDesaprobados,
 				COALESCE(fac.totalEsperado, 0) AS totalEsperado,
 				COALESCE(fac.totalFacturado, 0) AS totalFacturado,
-				COALESCE(fac.totalAdeudado, 0) AS totalAdeudado
+				COALESCE(fac.totalAdeudado, 0) AS totalAdeudado,
+				DATEDIFF(DAY, curso.fecha_inicio, curso.fecha_fin) * COALESCE(eval.cantAprobados, 0) AS sumDiasInicioAFinal,
+				COALESCE(eval.cantAprobados, 0) AS cantCasosFinalizados
 			FROM LOS_SELECTOS.curso curso
 			JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON c.categoria_id = curso.categoria_id
 			JOIN BI_LOS_SELECTOS.BI_dim_sede s ON s.sede_id = curso.sede_id
@@ -429,8 +431,7 @@ GO
 -- ============================================================================
 -- VISTAS
 -- ============================================================================
--- 1. Categorías y turnos más solicitados (Por año y sede)
--- "Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede"
+-- 1. Categorías y turnos más solicitados. Las 3 categorías de cursos y turnos con mayor cantidad de inscriptos por año por sede.
 GO
 CREATE VIEW BI_LOS_SELECTOS.vw_top_3_categorias_turnos AS
 SELECT 
@@ -445,19 +446,19 @@ FROM (
 		s.nombre AS nombre_sede, 
 		c.categoria, 
 		tur.turno, 
-		h.cantInscriptos,
-        ROW_NUMBER() OVER (PARTITION BY t.anio, s.sede_id ORDER BY h.cantInscriptos DESC) as ranking
+		SUM(h.cantInscriptos) as cantInscriptos,
+		ROW_NUMBER() OVER (PARTITION BY t.anio, s.sede_id ORDER BY SUM(h.cantInscriptos) DESC) as ranking
     FROM BI_LOS_SELECTOS.BI_hecho_inscripcion h
     JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON h.tiempo_id = t.tiempo_id
     JOIN BI_LOS_SELECTOS.BI_dim_sede s ON h.sede_id = s.sede_id
     JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON h.categoria_id = c.categoria_id
     JOIN BI_LOS_SELECTOS.BI_dim_turno tur ON h.turno_id = tur.turno_id
+	GROUP BY t.anio, s.sede_id, s.nombre, c.categoria, tur.turno
 ) v
 WHERE v.ranking <= 3;
 GO
 
--- 2. Tasa de rechazo de inscripciones
--- "Porcentaje de inscripciones rechazadas por mes por sede"
+-- 2. Tasa de rechazo de inscripciones: Porcentaje de inscripciones rechazadas por mes por sede (sobre el total de inscripciones).
 CREATE VIEW BI_LOS_SELECTOS.vw_tasa_rechazo AS
 SELECT 
     t.anio, 
@@ -504,12 +505,12 @@ SELECT
 	t.semestre, 
 	r.rango_id as rango_etario, 
 	c.categoria,
-    CAST(SUM(h.sumaNotas) / NULLIF(SUM(h.cantExamenesConNota), 0) AS DECIMAL(10,2)) as nota_promedio
+    CAST(SUM(h.promedioNotas * h.cantInscriptos) * 1.0 / NULLIF(SUM(h.cantInscriptos), 0) AS DECIMAL(10,2)) as promedioNotas
 FROM BI_LOS_SELECTOS.BI_hecho_final h
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON h.tiempo_id = t.tiempo_id
 JOIN BI_LOS_SELECTOS.BI_dim_rango_etario_alumno r ON h.rango_id = r.rango_id
 JOIN BI_LOS_SELECTOS.BI_dim_categoria c ON h.categoria_id = c.categoria_id
-GROUP BY t.anio, t.semestre, r.rango_id, c.categoria;
+GROUP BY t.anio, t.semestre, r.rango_id, c.categoria
 GO
 
 -- 6. Tasa de ausentismo finales
@@ -586,10 +587,10 @@ SELECT
 	s.nombre as sede, 
 	r.rango_id as rango_etario_prof,
     (
-        (
-            (SUM(CASE WHEN b.nombre = 'Satisfecho' THEN h.cantEncuestas ELSE 0 END) * 100.0 / NULLIF(SUM(h.cantEncuestas), 0)) -
-            (SUM(CASE WHEN b.nombre = 'Insatisfecho' THEN h.cantEncuestas ELSE 0 END) * 100.0 / NULLIF(SUM(h.cantEncuestas), 0))
-        ) + 100
+      (
+        (SUM(CASE WHEN b.nombre = 'Satisfecho' THEN h.cantEncuestas ELSE 0 END) * 100.0 / NULLIF(SUM(h.cantEncuestas), 0)) -
+        (SUM(CASE WHEN b.nombre = 'Insatisfecho' THEN h.cantEncuestas ELSE 0 END) * 100.0 / NULLIF(SUM(h.cantEncuestas), 0))
+      ) + 100
     ) / 2.0 as indice_satisfaccion
 FROM BI_LOS_SELECTOS.BI_hecho_encuesta h
 JOIN BI_LOS_SELECTOS.BI_dim_tiempo t ON h.tiempo_id = t.tiempo_id
