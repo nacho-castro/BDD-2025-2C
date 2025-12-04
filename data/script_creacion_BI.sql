@@ -190,6 +190,9 @@ BEGIN
 				UNION
 				SELECT e.fecha_hora
 				FROM LOS_SELECTOS.examenFinal e
+				UNION
+				SELECT i.fecha
+				FROM LOS_SELECTOS.inscripcion i
 			) AS fechas
 			ORDER BY anio, mes;
 
