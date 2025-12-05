@@ -4,6 +4,8 @@
 
 Este repositorio contiene el trabajo práctico desarrollado por el grupo **"Los SELECTos"** (Grupo 17) para la asignatura **Bases de Datos** de la **UTN FRBA**. El objetivo fue diseñar, implementar y explotar una base de datos relacional robusta y un Data Warehouse eficiente para la toma de decisiones.
 
+Documentación [PDF DOC](https://drive.google.com/file/d/1O52p-DftZI7y-GHTA9fuOWc1CJCK2hpL/view?usp=sharing)
+
 ---
 
 ## 🚀 Arquitectura del Proyecto
